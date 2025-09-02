@@ -1,10 +1,28 @@
-import Image from "next/image";
+"use client";
+import { useState } from "react";
 import { FaApple } from "react-icons/fa";
+import { signIn, useSession } from "next-auth/react";
+import { get } from "lodash";
 
 export default function Home() {
+  const { data: session } = useSession();
+  console.log(session);
+  const onSocialLogin = async () => {
+    try {
+      const result: any = await signIn("apple", {
+        redirect: false,
+      });
+      if (get(result, "error")) {
+      }
+    } catch (error) {}
+  };
+
   return (
     <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <button className="flex items-center gap-2 px-4 py-2 rounded-md bg-black text-white">
+      <button
+        className="flex items-center gap-2 px-4 py-2 rounded-md bg-black text-white"
+        onClick={onSocialLogin}
+      >
         <FaApple size={20} />
         Sign in with Apple
       </button>
