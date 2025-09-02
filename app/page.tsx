@@ -1,5 +1,4 @@
 "use client";
-import { useState } from "react";
 import { FaApple } from "react-icons/fa";
 import { signIn, useSession } from "next-auth/react";
 import { get } from "lodash";
@@ -14,7 +13,9 @@ export default function Home() {
       });
       if (get(result, "error")) {
       }
-    } catch (error) {}
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   return (

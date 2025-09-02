@@ -57,7 +57,6 @@ const AuthOptions: AuthOptions = {
         if (token) {
           headers["Authorization"] = `Bearer ${token}`;
         }
-        let body: any = undefined;
         return user;
       },
     }),
