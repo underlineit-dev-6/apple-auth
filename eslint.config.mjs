@@ -21,8 +21,8 @@ const eslintConfig = [
       "next-env.d.ts",
     ],
     rules: {
-      // Downgrade "any" to a warning instead of an error
-      "@typescript-eslint/no-explicit-any": "warn",
+      // Fully allow `any` (no warnings/errors)
+      "@typescript-eslint/no-explicit-any": "off",
 
       // Warn on unused vars, but allow `_var` convention
       "@typescript-eslint/no-unused-vars": [
