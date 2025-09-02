@@ -9,7 +9,7 @@ export default function Home() {
   const onSocialLogin = async () => {
     try {
       const result: any = await signIn("apple", {
-        redirect: false,
+        redirect: true,
       });
       if (get(result, "error")) {
       }
