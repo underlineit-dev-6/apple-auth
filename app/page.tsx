@@ -1,7 +1,7 @@
 "use client";
-import { FaApple } from "react-icons/fa";
 import { signIn, useSession } from "next-auth/react";
 import { get } from "lodash";
+import { FaApple } from "react-icons/fa";
 
 export default function Home() {
   const { data: session } = useSession();

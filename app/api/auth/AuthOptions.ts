@@ -2,7 +2,6 @@ import get from "lodash/get";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
-import { getServerSession, type AuthOptions } from "next-auth";
 
 import { assign } from "lodash";
 import AppleProvider from "next-auth/providers/apple";
@@ -28,7 +27,7 @@ export function generateAppleClientSecret() {
   );
 }
 
-const AuthOptions: AuthOptions = {
+const AuthOptions: any = {
   pages: {
     signIn: "/",
     error: "/",
@@ -48,7 +47,7 @@ const AuthOptions: AuthOptions = {
       },
       async authorize(credentials, req) {
         let user: any;
-        const res = JSON.parse(get(credentials, "userData", `{}`));
+        const res = JSON.parse(get(credentials, "userData", `{}`) as string);
         const headers: HeadersInit = {
           "Content-Type": "application/json",
         };
@@ -219,6 +218,5 @@ const AuthOptions: AuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET as string,
 };
-export const getServerAuthSession = () => getServerSession(AuthOptions);
 
 export default AuthOptions;
