@@ -9,6 +9,7 @@ export default function Home() {
     try {
       const result: any = await signIn("apple", {
         redirect: true,
+        callbackUrl: "/social-login",
       });
       if (get(result, "error")) {
       }
