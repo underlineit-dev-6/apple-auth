@@ -73,6 +73,17 @@ const AuthOptions: any = {
     strategy: "jwt",
   },
   callbacks: {
+    cookies: {
+      callbackUrl: {
+        name: `__Secure-next-auth.callback-url`,
+        options: {
+          httpOnly: false,
+          sameSite: "none",
+          path: "/",
+          secure: true,
+        },
+      },
+    },
     signIn: async ({ user, account, profile, provider }: any) => {
       if (
         (account?.provider === "google" || account?.provider === "apple") &&
