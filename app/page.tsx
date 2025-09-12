@@ -7,7 +7,10 @@ export default function Home() {
   const { data: session } = useSession();
   const onSocialLogin = async () => {
     try {
-      const result: any = await signIn("apple");
+      const result: any = await signIn("apple", {
+        redirect: false,
+        callbackUrl: "/social-login",
+      });
       if (get(result, "error")) {
       }
     } catch (error) {
