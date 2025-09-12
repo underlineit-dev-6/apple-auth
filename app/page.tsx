@@ -9,7 +9,7 @@ export default function Home() {
     try {
       const result: any = await signIn("apple", {
         callbackUrl: "https://apple-auth-gamma.vercel.app/social-login",
-        redirect: true,
+        redirect: false,
       });
       if (get(result, "error")) {
       }
