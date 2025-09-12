@@ -5,7 +5,6 @@ import { FaApple } from "react-icons/fa";
 
 export default function Home() {
   const { data: session } = useSession();
-  console.log(session);
   const onSocialLogin = async () => {
     try {
       const result: any = await signIn("apple", {

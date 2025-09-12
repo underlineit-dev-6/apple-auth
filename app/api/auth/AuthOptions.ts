@@ -1,31 +1,29 @@
 import get from "lodash/get";
 import CredentialsProvider from "next-auth/providers/credentials";
-import GoogleProvider from "next-auth/providers/google";
-import FacebookProvider from "next-auth/providers/facebook";
-
-import { assign } from "lodash";
 import AppleProvider from "next-auth/providers/apple";
-import jwt from "jsonwebtoken";
 
-export function generateAppleClientSecret() {
-  const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    iss: process.env.APPLE_TEAM_ID,
-    iat: now,
-    exp: now + 15777000, // 6 months
-    aud: "https://appleid.apple.com",
-    sub: process.env.APPLE_ID,
-  };
+import * as jose from "jose";
 
-  return jwt.sign(
-    payload,
-    process.env.APPLE_PRIVATE_KEY!.replace(/\\n/g, "\n"),
-    {
-      algorithm: "ES256",
-      keyid: process.env.APPLE_KEY_ID,
-    }
-  );
+export async function generateAppleClientSecret() {
+  const privateKey = process.env.APPLE_PRIVATE_KEY!.replace(/\\n/g, "\n");
+  const teamId = process.env.APPLE_TEAM_ID!;
+  const clientId = process.env.APPLE_CLIENT_ID!;
+  const keyId = process.env.APPLE_KEY_ID!;
+
+  const alg = "ES256";
+
+  const token = await new jose.SignJWT({})
+    .setProtectedHeader({ alg, kid: keyId })
+    .setIssuer(teamId)
+    .setAudience("https://appleid.apple.com")
+    .setSubject(clientId)
+    .setExpirationTime("180d")
+    .sign(await jose.importPKCS8(privateKey, alg));
+
+  return token;
 }
+
+const appleClientSecret = await generateAppleClientSecret();
 
 const AuthOptions: any = {
   pages: {
@@ -61,7 +59,7 @@ const AuthOptions: any = {
     }),
     AppleProvider({
       clientId: process.env.APPLE_ID!,
-      clientSecret: generateAppleClientSecret(),
+      clientSecret: appleClientSecret, // returns string directly
       authorization: {
         params: {
           scope: "name email",
