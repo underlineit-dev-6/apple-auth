@@ -85,6 +85,7 @@ const AuthOptions: any = {
       },
     },
     signIn: async ({ user, account, profile, provider }: any) => {
+      console.log(appleClientSecret,"id>>>>>>>>>>");
       if (
         (account?.provider === "google" || account?.provider === "apple") &&
         account?.id_token
