@@ -8,7 +8,7 @@ export default function Home() {
   const onSocialLogin = async () => {
     try {
       const result: any = await signIn("apple", {
-        redirect: true,
+        redirect: false,
         callbackUrl: "/social-login",
       });
       if (get(result, "error")) {
