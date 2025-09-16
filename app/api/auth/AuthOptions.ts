@@ -1,7 +1,7 @@
 import get from "lodash/get";
 import CredentialsProvider from "next-auth/providers/credentials";
 import AppleProvider from "next-auth/providers/apple";
-import { NextAuthOptions } from "next-auth";
+
 import * as jose from "jose";
 
 export async function generateAppleClientSecret() {
@@ -23,50 +23,43 @@ export async function generateAppleClientSecret() {
   return token;
 }
 
-const AuthOptions: NextAuthOptions = {
+const appleClientSecret = await generateAppleClientSecret();
+
+const AuthOptions: any = {
   pages: {
     signIn: "/",
     error: "/",
   },
   providers: [
     CredentialsProvider({
-      name: "credentials",
+      name: "credentials" as string,
       credentials: {
         brandId: { label: "brandId", type: "text" },
-        userData: { label: "userData", type: "text" },
+        userData: { label: "userData", type: "object" },
         url: { label: "url", type: "text" },
         method: { label: "method", type: "text" },
         email: { label: "email", type: "text" },
-        password: { label: "password", type: "password" },
+        password: { label: "password", type: "text" },
         token: { label: "token", type: "text" },
         credential: { label: "credential", type: "text" },
       },
       async authorize(credentials, req) {
-        try {
-          let user: any;
-          const res = JSON.parse(get(credentials, "userData", `{}`) as string);
-          const headers: HeadersInit = {
-            "Content-Type": "application/json",
-          };
+        let user: any;
+        const res = JSON.parse(get(credentials, "userData", `{}`) as string);
+        const headers: HeadersInit = {
+          "Content-Type": "application/json",
+        };
 
-          const token = get(res, "access_token", get(credentials, "token"));
-          if (token) {
-            headers["Authorization"] = `Bearer ${token}`;
-          }
-
-          // Add your actual authentication logic here
-          // This should return a user object or null
-
-          return user;
-        } catch (error) {
-          console.error("Credentials authorization error:", error);
-          return null;
+        const token = get(res, "access_token", get(credentials, "token"));
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
         }
+        return user;
       },
     }),
     AppleProvider({
-      clientId: process.env.APPLE_CLIENT_ID!, // Fixed: was APPLE_ID
-      clientSecret: await generateAppleClientSecret(), // Generate fresh secret
+      clientId: process.env.APPLE_ID!,
+      clientSecret: appleClientSecret, // returns string directly
       authorization: {
         params: {
           scope: "name email",
@@ -80,105 +73,160 @@ const AuthOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
-    async signIn({ user, account, profile }: any) {
-      try {
-        if (
-          (account?.provider === "google" || account?.provider === "apple") &&
-          account?.id_token
-        ) {
-          user.idToken = account.id_token;
-        }
-        return true;
-      } catch (error) {
-        console.error("SignIn callback error:", error);
-        return false;
-      }
+    cookies: {
+      callbackUrl: {
+        name: `__Secure-next-auth.callback-url`,
+        options: {
+          httpOnly: false,
+          sameSite: "none",
+          path: "/",
+          secure: true,
+        },
+      },
     },
-
-    async jwt({ token, user, trigger, session }: any) {
-      try {
-        if (user) {
-          token.name = user?.name;
-          token.mobile = user?.mobile;
-          token.email = user?.email;
-          token.role = user?.role;
-          token.token = user?.token;
-          token.theme = user?.theme;
-          token._id = user?._id;
-          token.profileColor = user?.profileColor;
-          token.timeZone = user?.timeZone;
-          token.profilePicture = user?.profilePicture;
-          token.deviceId = user?.deviceId;
-          token.recentBrandId = user?.recentBrandId;
-          token.activeBrandsCount = user?.activeBrandsCount;
-          token.canImpersonate = user?.canImpersonate;
-          token.displayRoleName = user?.displayRoleName;
-          token.brandId = user?.brandId;
-          token.brand = user?.brand;
-          token.subdomain = user?.subdomain;
-          token.recentBoardId = user?.recentBoardId;
-          token.recentWorkspaceId = user?.recentWorkspaceId;
-          token.recentDashboardId = user?.recentDashboardId;
-          token.idToken = user?.idToken;
-
-          if (user?.refreshToken) {
-            token.refreshToken = user.refreshToken;
-          }
-        }
-
-        if (trigger === "update" && session) {
-          // Update token with session data
-          Object.keys(session).forEach((key) => {
-            if (session[key] !== undefined) {
-              token[key] = session[key];
-            }
-          });
-        }
-
-        return token;
-      } catch (error) {
-        console.error("JWT callback error:", error);
-        return token;
+    signIn: async ({ user, account, profile, provider }: any) => {
+      console.log(appleClientSecret,"id>>>>>>>>>>");
+      if (
+        (account?.provider === "google" || account?.provider === "apple") &&
+        account?.id_token
+      ) {
+        user.idToken = account?.id_token;
       }
+      return true;
     },
-
-    async session({ session, token }) {
-      try {
-        if (token) {
-          session.user = {
-            name: token?.name,
-            email: token?.email,
-            role: token?.role,
-            displayRoleName: token?.displayRoleName,
-            token: token?.token,
-            _id: token?._id,
-            profileColor: token?.profileColor,
-            timeZone: token?.timeZone,
-            profilePicture: token?.profilePicture,
-            deviceId: token?.deviceId,
-            brandId: token?.brandId,
-            brand: token?.brand,
-            subdomain: token?.subdomain,
-            recentWorkspaceId: token?.recentWorkspaceId,
-            recentBoardId: token?.recentBoardId,
-            recentDashboardId: token?.recentDashboardId,
-            idToken: token.idToken,
-            recentBrandId: token?.recentBrandId,
-            activeBrandsCount: token?.activeBrandsCount,
-            canImpersonate: token?.canImpersonate,
-            theme: token?.theme,
-            mobile: token?.mobile,
-          } as any;
+    jwt: async ({ token, user, trigger, session, provider }: any) => {
+      if (user) {
+        token.name = user?.name;
+        token.mobile = user?.mobile;
+        token.email = user?.email;
+        token.role = user?.role;
+        token.token = user?.token;
+        token.theme = user?.theme;
+        token._id = user?._id;
+        token.profileColor = user?.profileColor;
+        token.timeZone = user?.timeZone;
+        token.profilePicture = user?.profilePicture;
+        token.deviceId = user?.deviceId;
+        token.recentBrandId = user?.recentBrandId;
+        token.activeBrandsCount = user?.activeBrandsCount;
+        token.canImpersonate = user?.canImpersonate;
+        token.displayRoleName = user?.displayRoleName;
+        token.brandId = user?.brandId;
+        token.brand = user?.brand;
+        token.subdomain = user?.subdomain;
+        token.recentBoardId = user?.recentBoardId;
+        token.recentWorkspaceId = user?.recentWorkspaceId;
+        token.recentDashboardId = user?.recentDashboardId;
+        token.idToken = user?.idToken;
+        token.recentBrandId = user?.recentBrandId;
+        if (user?.refreshToken) {
+          token.refreshToken = user?.refreshToken;
         }
-        return session;
-      } catch (error) {
-        console.error("Session callback error:", error);
-        return session;
       }
+      if (user?.idToken) {
+        token.idToken = user.idToken;
+      }
+      if (trigger === "update" && session) {
+        if (session?.role) {
+          token.role = session?.role;
+        }
+        if (session?.name) {
+          token.name = session?.name;
+        }
+        if (session?.email) {
+          token.email = session?.email;
+        }
+        if (session?.displayRoleName) {
+          token.displayRoleName = session?.displayRoleName;
+        }
+        if (session?.token) {
+          token.token = session?.token;
+        }
+        if (session?._id) {
+          token._id = session?._id;
+        }
+        if (session?.profileColor) {
+          token.profileColor = session?.profileColor;
+        }
+        if (session?.timeZone) {
+          token.timeZone = session?.timeZone;
+        }
+        if (session?.profilePicture || session?.profilePicture === null) {
+          token.profilePicture = session?.profilePicture;
+        }
+        if (session?.deviceId !== undefined) {
+          token.deviceId = session?.deviceId;
+        }
+        if (session?.brandId) {
+          token.brandId = session?.brandId;
+        }
+        if (session?.brand) {
+          token.brand = session?.brand;
+        }
+        if (session?.subdomain) {
+          token.subdomain = session?.subdomain;
+        }
+        if (session?.recentWorkspaceId !== undefined) {
+          token.recentWorkspaceId = session?.recentWorkspaceId;
+        }
+        if (session?.recentBoardId !== undefined) {
+          token.recentBoardId = session?.recentBoardId;
+        }
+        if (session?.recentDashboardId !== undefined) {
+          token.recentDashboardId = session?.recentDashboardId;
+        }
+        if (session?.refreshToken) {
+          token.refreshToken = session?.refreshToken;
+        }
+        if (session?.recentBrandId !== undefined) {
+          token.recentBrandId = session?.recentBrandId;
+        }
+        if (session?.canImpersonate !== undefined) {
+          token.canImpersonate = session?.canImpersonate;
+        }
+        if (session?.activeBrandsCount) {
+          token.activeBrandsCount = session?.activeBrandsCount;
+        }
+        if (session?.theme) {
+          token.theme = session?.theme;
+        }
+        if (session?.mobile) {
+          token.mobile = session?.mobile;
+        }
+      }
+      return token;
+    },
+    session: async ({ session, token, trigger, newSession }: any) => {
+      if (token) {
+        session.user = {
+          name: token?.name,
+          email: token?.email,
+          role: token?.role,
+          displayRoleName: token?.displayRoleName,
+          token: token?.token,
+          _id: token?._id,
+          profileColor: token?.profileColor,
+          timeZone: token?.timeZone,
+          profilePicture: token?.profilePicture,
+          deviceId: token?.deviceId,
+          brandId: token?.brandId,
+          brand: token?.brand,
+          subdomain: token?.subdomain,
+          recentWorkspaceId: token?.recentWorkspaceId,
+          recentBoardId: token?.recentBoardId,
+          recentDashboardId: token?.recentDashboardId,
+          idToken: token.idToken,
+          recentBrandId: token?.recentBrandId,
+          activeBrandsCount: token?.activeBrandsCount,
+          canImpersonate: token?.canImpersonate,
+          theme: token?.theme,
+          mobile: token?.mobile,
+        };
+      }
+      return session;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET,
-  debug: process.env.NODE_ENV === "development",
+  secret: process.env.NEXTAUTH_SECRET as string,
 };
 
 export default AuthOptions;
