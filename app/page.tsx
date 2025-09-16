@@ -8,7 +8,7 @@ export default function Home() {
   const onSocialLogin = async () => {
     try {
       const result: any = await signIn("apple", {
-        callbackUrl: "https://apple-auth-gamma.vercel.app/social-login",
+        callbackUrl: "/social-login",
         redirect: false,
       });
       if (get(result, "error")) {
