@@ -2,14 +2,17 @@
 import { signIn, useSession } from "next-auth/react";
 import { get } from "lodash";
 import { FaApple } from "react-icons/fa";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
   const { data: session } = useSession();
+  const navigate = useRouter();
   const onSocialLogin = async () => {
     try {
       const result: any = await signIn("apple");
       console.log("Apple sign-in result:", result);
-      if (get(result, "error")) {
+      if (!get(result, "error")) {
+        navigate.push("/social-login");
       }
     } catch (error) {
       console.log(error);
