@@ -11,6 +11,7 @@ export default function Home() {
         callbackUrl: "/social-login",
         redirect: false,
       });
+      console.log("Apple sign-in result:", result);
       if (get(result, "error")) {
       }
     } catch (error) {
