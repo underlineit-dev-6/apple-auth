@@ -94,8 +94,33 @@ const AuthOptions: any = {
       },
     }),
   ],
-  session: {
-    strategy: "jwt" as const,
+  session: { strategy: "jwt" },
+  cookies: {
+    // ensure cookies are sent on cross-site POST
+    pkceCodeVerifier: {
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Secure-next-auth.pkce.code_verifier"
+          : "next-auth.pkce.code_verifier",
+      options: {
+        httpOnly: true,
+        sameSite: "none", // <-- important
+        secure: true, // <-- important (required by SameSite=None)
+        path: "/",
+      },
+    },
+    state: {
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Secure-next-auth.state"
+          : "next-auth.state",
+      options: {
+        httpOnly: true,
+        sameSite: "none", // <-- important
+        secure: true,
+        path: "/",
+      },
+    },
   },
   logger: {
     error(code: any, metadata: any) {
