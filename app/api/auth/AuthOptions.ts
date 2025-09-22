@@ -101,24 +101,14 @@ const AuthOptions: any = {
         process.env.NODE_ENV === "production"
           ? "__Secure-next-auth.pkce.code_verifier"
           : "next-auth.pkce.code_verifier",
-      options: {
-        httpOnly: true,
-        sameSite: "none",
-        secure: true,
-        path: "/social-login",
-      },
+      options: { httpOnly: true, sameSite: "none", secure: true, path: "/" },
     },
     state: {
       name:
         process.env.NODE_ENV === "production"
           ? "__Secure-next-auth.state"
           : "next-auth.state",
-      options: {
-        httpOnly: true,
-        sameSite: "none",
-        secure: true,
-        path: "/social-login",
-      },
+      options: { httpOnly: true, sameSite: "none", secure: true, path: "/" },
     },
   },
   logger: {
