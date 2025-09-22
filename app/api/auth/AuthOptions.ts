@@ -97,6 +97,17 @@ const AuthOptions: any = {
   session: {
     strategy: "jwt" as const,
   },
+  logger: {
+    error(code: any, metadata: any) {
+      console.error("NextAuth error:", code, metadata);
+    },
+    warn(code: any) {
+      console.warn("NextAuth warn:", code);
+    },
+    debug(code: any, metadata: any) {
+      console.log("NextAuth debug:", code, metadata);
+    },
+  },
   callbacks: {
     signIn: async ({ user, account, profile }: any) => {
       try {
