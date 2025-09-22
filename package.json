@@ -5,14 +5,15 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "start": "next start"
+    "start": "next start",
+    "gen:apple-secret": "tsx scripts/gen-apple-secret.ts"
   },
   "dependencies": {
     "jose": "^6.1.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
     "next": "15.5.3",
-    "next-auth": "^4.24.11",
+    "next-auth": "4.24.11",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-icons": "^5.5.0"
@@ -24,7 +25,9 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "dotenv": "^17.2.2",
     "tailwindcss": "^4",
+    "tsx": "^4.20.5",
     "typescript": "^5"
   }
 }

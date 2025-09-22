@@ -84,7 +84,7 @@ const AuthOptions: any = {
     }),
     AppleProvider({
       clientId: process.env.APPLE_ID!,
-      clientSecret: await getAppleClientSecret(), // Generate fresh secret
+      clientSecret: process.env.APPLE_CLIENT_SECRET!, // Generate fresh secret
       authorization: {
         params: {
           scope: "name email",
