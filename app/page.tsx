@@ -7,12 +7,8 @@ export default function Home() {
   const { data: session } = useSession();
   const onSocialLogin = async () => {
     try {
-      const result: any = await signIn("apple", {
-        callbackUrl: "/social-login",
-        redirect: false,
-      });
+      const result: any = await signIn("apple");
       console.log("Apple sign-in result:", result);
-      if (result?.url) window.location.href = result.url;
       if (get(result, "error")) {
       }
     } catch (error) {
