@@ -12,6 +12,7 @@ export default function Home() {
         redirect: false,
       });
       console.log("Apple sign-in result:", result);
+      if (result?.url) window.location.href = result.url;
       if (get(result, "error")) {
       }
     } catch (error) {
