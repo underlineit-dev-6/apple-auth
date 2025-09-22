@@ -1,50 +1,20 @@
-import get from "lodash/get";
+import NextAuth, { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import AppleProvider from "next-auth/providers/apple";
-import * as jose from "jose";
+import get from "lodash/get";
 
-export async function generateAppleClientSecret() {
-  const privateKey = process.env.APPLE_PRIVATE_KEY!.replace(/\\n/g, "\n");
-  const teamId = process.env.APPLE_TEAM_ID!;
-  const clientId = process.env.APPLE_ID!; // or APPLE_CLIENT_ID
-  const keyId = process.env.APPLE_KEY_ID!;
-
-  const now = Math.floor(Date.now() / 1000);
-  const alg = "ES256";
-
-  try {
-    const token = await new jose.SignJWT({})
-      .setProtectedHeader({ alg, kid: keyId })
-      .setIssuer(teamId)
-      .setIssuedAt(now)
-      .setExpirationTime(now + 15777000) // 6 months
-      .setAudience("https://appleid.apple.com")
-      .setSubject(clientId)
-      .sign(await jose.importPKCS8(privateKey, alg));
-
-    return token;
-  } catch (error) {
-    console.error("Error generating Apple client secret:", error);
-    throw error;
-  }
-}
-
-// Create a function to get the client secret dynamically
-async function getAppleClientSecret() {
-  return await generateAppleClientSecret();
-}
-
-const AuthOptions: any = {
+export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/",
     error: "/",
   },
+
   providers: [
     CredentialsProvider({
-      name: "credentials" as string,
+      name: "credentials",
       credentials: {
         brandId: { label: "brandId", type: "text" },
-        userData: { label: "userData", type: "text" }, // Fixed: should be text, not object
+        userData: { label: "userData", type: "text" }, // text, not object
         url: { label: "url", type: "text" },
         method: { label: "method", type: "text" },
         email: { label: "email", type: "email" },
@@ -52,49 +22,48 @@ const AuthOptions: any = {
         token: { label: "token", type: "text" },
         credential: { label: "credential", type: "text" },
       },
-      async authorize(credentials, req) {
+      async authorize(credentials) {
         try {
-          let user: any = null;
-
-          if (!credentials) {
-            return null;
-          }
+          if (!credentials) return null;
 
           const userData = credentials.userData
             ? JSON.parse(credentials.userData)
             : {};
-          const headers: HeadersInit = {
-            "Content-Type": "application/json",
-          };
+          const headers: HeadersInit = { "Content-Type": "application/json" };
 
-          const token = get(userData, "access_token", credentials.token);
-          if (token) {
-            headers["Authorization"] = `Bearer ${token}`;
-          }
+          const bearer = get(userData, "access_token", credentials.token);
+          if (bearer) headers["Authorization"] = `Bearer ${bearer}`;
 
-          // Add your actual authentication logic here
-          // For now, returning null - replace with your auth logic
+          // TODO: Call your API and return a user object on success
+          // const res = await fetch(credentials.url!, { method: credentials.method || "POST", headers, body: JSON.stringify(...) });
+          // if (!res.ok) return null;
+          // const user = await res.json();
+          // return user ?? null;
 
-          return user;
-        } catch (error) {
-          console.error("Authorization error:", error);
+          return null;
+        } catch (err) {
+          console.error("Authorization error:", err);
           return null;
         }
       },
     }),
+
     AppleProvider({
-      clientId: process.env.APPLE_ID!,
-      clientSecret: process.env.APPLE_CLIENT_SECRET!, // Generate fresh secret
+      clientId: process.env.APPLE_ID!, // Services ID
+      clientSecret: process.env.APPLE_CLIENT_SECRET!, // <-- STRING JWT from your generator
       authorization: {
         params: {
           scope: "name email",
           response_type: "code",
-          response_mode: "form_post",
+          response_mode: "form_post", // Apple posts back
         },
       },
     }),
   ],
+
   session: { strategy: "jwt" },
+
+  // Ensure PKCE/state cookies are sent on Apple's cross-site POST callback
   cookies: {
     pkceCodeVerifier: {
       name:
@@ -111,25 +80,41 @@ const AuthOptions: any = {
       options: { httpOnly: true, sameSite: "none", secure: true, path: "/" },
     },
   },
+
   logger: {
-    error(code: any, metadata: any) {
+    error(code, metadata) {
       console.error("NextAuth error:", code, metadata);
     },
-    warn(code: any) {
+    warn(code) {
       console.warn("NextAuth warn:", code);
     },
-    debug(code: any, metadata: any) {
+    debug(code, metadata) {
       console.log("NextAuth debug:", code, metadata);
     },
   },
+
   callbacks: {
-    signIn: async ({ user, account, profile }: any) => {
+    // Always land on /social-login after any provider callback
+    async redirect({ url, baseUrl }) {
+      // After the OAuth callback endpoints, force /social-login
+      if (url.startsWith(`${baseUrl}/api/auth/callback`)) {
+        return `${baseUrl}/social-login`;
+      }
+      // Otherwise, keep safe defaults:
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      try {
+        if (new URL(url).origin === baseUrl) return url;
+      } catch {}
+      return baseUrl;
+    },
+
+    async signIn({ user, account }) {
       try {
         if (
           (account?.provider === "google" || account?.provider === "apple") &&
           account?.id_token
         ) {
-          user.idToken = account.id_token;
+          (user as any).idToken = account.id_token;
         }
         return true;
       } catch (error) {
@@ -138,39 +123,37 @@ const AuthOptions: any = {
       }
     },
 
-    jwt: async ({ token, user, trigger, session }: any) => {
+    async jwt({ token, user, trigger, session }) {
       try {
         if (user) {
-          token.name = user?.name;
-          token.mobile = user?.mobile;
-          token.email = user?.email;
-          token.role = user?.role;
-          token.token = user?.token;
-          token.theme = user?.theme;
-          token._id = user?._id;
-          token.profileColor = user?.profileColor;
-          token.timeZone = user?.timeZone;
-          token.profilePicture = user?.profilePicture;
-          token.deviceId = user?.deviceId;
-          token.recentBrandId = user?.recentBrandId;
-          token.activeBrandsCount = user?.activeBrandsCount;
-          token.canImpersonate = user?.canImpersonate;
-          token.displayRoleName = user?.displayRoleName;
-          token.brandId = user?.brandId;
-          token.brand = user?.brand;
-          token.subdomain = user?.subdomain;
-          token.recentBoardId = user?.recentBoardId;
-          token.recentWorkspaceId = user?.recentWorkspaceId;
-          token.recentDashboardId = user?.recentDashboardId;
-          token.idToken = user?.idToken;
-
-          if (user?.refreshToken) {
-            token.refreshToken = user.refreshToken;
-          }
+          Object.assign(token, {
+            name: (user as any)?.name,
+            mobile: (user as any)?.mobile,
+            email: (user as any)?.email,
+            role: (user as any)?.role,
+            token: (user as any)?.token,
+            theme: (user as any)?.theme,
+            _id: (user as any)?._id,
+            profileColor: (user as any)?.profileColor,
+            timeZone: (user as any)?.timeZone,
+            profilePicture: (user as any)?.profilePicture,
+            deviceId: (user as any)?.deviceId,
+            recentBrandId: (user as any)?.recentBrandId,
+            activeBrandsCount: (user as any)?.activeBrandsCount,
+            canImpersonate: (user as any)?.canImpersonate,
+            displayRoleName: (user as any)?.displayRoleName,
+            brandId: (user as any)?.brandId,
+            brand: (user as any)?.brand,
+            subdomain: (user as any)?.subdomain,
+            recentBoardId: (user as any)?.recentBoardId,
+            recentWorkspaceId: (user as any)?.recentWorkspaceId,
+            recentDashboardId: (user as any)?.recentDashboardId,
+            idToken: (user as any)?.idToken,
+            refreshToken: (user as any)?.refreshToken,
+          });
         }
 
         if (trigger === "update" && session) {
-          // Simplified update logic
           const updateableFields = [
             "role",
             "name",
@@ -194,13 +177,13 @@ const AuthOptions: any = {
             "activeBrandsCount",
             "theme",
             "mobile",
-          ];
+          ] as const;
 
-          updateableFields.forEach((field) => {
-            if (session[field] !== undefined) {
-              token[field] = session[field];
+          for (const field of updateableFields) {
+            if ((session as any)[field] !== undefined) {
+              (token as any)[field] = (session as any)[field];
             }
-          });
+          }
         }
 
         return token;
@@ -210,34 +193,32 @@ const AuthOptions: any = {
       }
     },
 
-    session: async ({ session, token }: any) => {
+    async session({ session, token }) {
       try {
-        if (token) {
-          session.user = {
-            name: token?.name,
-            email: token?.email,
-            role: token?.role,
-            displayRoleName: token?.displayRoleName,
-            token: token?.token,
-            _id: token?._id,
-            profileColor: token?.profileColor,
-            timeZone: token?.timeZone,
-            profilePicture: token?.profilePicture,
-            deviceId: token?.deviceId,
-            brandId: token?.brandId,
-            brand: token?.brand,
-            subdomain: token?.subdomain,
-            recentWorkspaceId: token?.recentWorkspaceId,
-            recentBoardId: token?.recentBoardId,
-            recentDashboardId: token?.recentDashboardId,
-            idToken: token.idToken,
-            recentBrandId: token?.recentBrandId,
-            activeBrandsCount: token?.activeBrandsCount,
-            canImpersonate: token?.canImpersonate,
-            theme: token?.theme,
-            mobile: token?.mobile,
-          };
-        }
+        (session as any).user = {
+          name: token?.name,
+          email: token?.email,
+          role: (token as any)?.role,
+          displayRoleName: (token as any)?.displayRoleName,
+          token: (token as any)?.token,
+          _id: (token as any)?._id,
+          profileColor: (token as any)?.profileColor,
+          timeZone: (token as any)?.timeZone,
+          profilePicture: (token as any)?.profilePicture,
+          deviceId: (token as any)?.deviceId,
+          brandId: (token as any)?.brandId,
+          brand: (token as any)?.brand,
+          subdomain: (token as any)?.subdomain,
+          recentWorkspaceId: (token as any)?.recentWorkspaceId,
+          recentBoardId: (token as any)?.recentBoardId,
+          recentDashboardId: (token as any)?.recentDashboardId,
+          idToken: (token as any)?.idToken,
+          recentBrandId: (token as any)?.recentBrandId,
+          activeBrandsCount: (token as any)?.activeBrandsCount,
+          canImpersonate: (token as any)?.canImpersonate,
+          theme: (token as any)?.theme,
+          mobile: (token as any)?.mobile,
+        };
         return session;
       } catch (error) {
         console.error("Session callback error:", error);
@@ -245,7 +226,9 @@ const AuthOptions: any = {
       }
     },
   },
-  secret: process.env.NEXTAUTH_SECRET as string,
+
+  secret: process.env.NEXTAUTH_SECRET!,
 };
 
-export default AuthOptions;
+const handler = NextAuth(authOptions);
+export { handler as GET, handler as POST };
