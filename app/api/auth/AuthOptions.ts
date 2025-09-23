@@ -95,14 +95,25 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    async redirect(obj) {
-      console.warn(obj, "redirect call", await getSession());
-      return obj.url;
-    },
+    async redirect({ url, baseUrl }) {
+      try {
+        const target = new URL(url, baseUrl);
 
+        if (target.pathname.startsWith("/social-login")) {
+          return `${baseUrl}/social-login${target.search}${target.hash}`;
+        }
+
+        if (target.origin === baseUrl) return target.toString();
+
+        if (url.startsWith("/")) return `${baseUrl}${url}`;
+
+        return baseUrl;
+      } catch {
+        return baseUrl;
+      }
+    },
     async signIn({ user, account }) {
       try {
-        console.warn(account, user);
         if (
           (account?.provider === "google" || account?.provider === "apple") &&
           account?.id_token
@@ -117,7 +128,6 @@ export const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, user, trigger, session }) {
-      console.warn(token, user, trigger, session, "session call 2");
       try {
         if (user) {
           Object.assign(token, {
@@ -188,8 +198,6 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }) {
-      console.warn(token, session, "session call 3");
-
       try {
         (session as any).user = {
           name: token?.name,
