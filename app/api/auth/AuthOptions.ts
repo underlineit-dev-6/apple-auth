@@ -95,17 +95,9 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     // Always land on /social-login after any provider callback
-    async redirect({ url, baseUrl }) {
-      // After the OAuth callback endpoints, force /social-login
-      if (url.startsWith(`${baseUrl}/api/auth/callback`)) {
-        return `${baseUrl}/social-login`;
-      }
-      // Otherwise, keep safe defaults:
-      if (url.startsWith("/")) return `${baseUrl}${url}`;
-      try {
-        if (new URL(url).origin === baseUrl) return url;
-      } catch {}
-      return baseUrl;
+    async redirect(obj) {
+      console.warn(obj, "redirect call");
+      return obj.url;
     },
 
     async signIn({ user, account }) {
