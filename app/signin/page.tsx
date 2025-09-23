@@ -26,13 +26,13 @@ export default function Home() {
   console.log(login, session, "login session");
   return (
     <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <button
-        className="flex items-center gap-2 px-4 py-2 rounded-md bg-black text-white cursor-pointer"
-        onClick={onSocialLogin}
+      <a
+        href={`/api/auth/signin/apple?callbackUrl=${encodeURIComponent(
+          "/social-login"
+        )}`}
       >
-        <FaApple size={20} />
         Sign in with Apple
-      </button>
+      </a>
     </div>
   );
 }
