@@ -16,7 +16,7 @@ export default function Home() {
   const onSocialLogin = async () => {
     const res = await signIn("apple", {
       redirect: false,
-      callbackUrl: "/social-login",
+      callbackUrl: "/social-login?token=ssdfjlkasdjflkasjdfklsjd;lfjs;lkdjfdskl",
     });
 
     if (res?.error) {
