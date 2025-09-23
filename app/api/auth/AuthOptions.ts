@@ -2,6 +2,7 @@ import NextAuth, { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import AppleProvider from "next-auth/providers/apple";
 import get from "lodash/get";
+import { getSession } from "next-auth/react";
 
 export const authOptions: NextAuthOptions = {
   pages: {
@@ -94,9 +95,8 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    // Always land on /social-login after any provider callback
     async redirect(obj) {
-      console.warn(obj, "redirect call");
+      console.warn(obj, "redirect call", await getSession());
       return obj.url;
     },
 
