@@ -14,19 +14,26 @@ export default function Home() {
 
   const navigate = useRouter();
   const onSocialLogin = async () => {
-    setAppState({ ...appState, loading: true });
-    try {
-      const result: any = await signIn("apple", {
-        redirect: false,
-        callbackUrl: "/social-login",
-      });
-      console.log("Apple sign-in result:", result);
-      if (get(result, "error")) {
-      }
-    } catch (error) {
-      console.log(error);
+    const res = await signIn("apple", {
+      redirect: false,
+      callbackUrl: "/social-login",
+    });
+
+    if (res?.error) {
+      console.error(res.error);
+      return;
+    }
+    if (res?.url) {
+      // Go to Apple. After a successful callback, the redirect() above sends you to /social-login
+      window.location.href = res.url;
+    } else {
+      // Fallback if helper didn't return a URL
+      window.location.href = `/api/auth/signin/apple?callbackUrl=${encodeURIComponent(
+        "/social-login"
+      )}`;
     }
   };
+
   console.log(session, login, appState);
   return (
     <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
