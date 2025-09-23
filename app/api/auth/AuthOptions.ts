@@ -125,6 +125,7 @@ export const authOptions: NextAuthOptions = {
           account?.id_token
         ) {
           (user as any).idToken = account.id_token;
+          (user as any).provider = account.provider;
         }
         return true;
       } catch (error) {
@@ -133,7 +134,7 @@ export const authOptions: NextAuthOptions = {
       }
     },
 
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, trigger, session, account }) {
       try {
         if (user) {
           Object.assign(token, {
@@ -160,6 +161,7 @@ export const authOptions: NextAuthOptions = {
             recentDashboardId: (user as any)?.recentDashboardId,
             idToken: (user as any)?.idToken,
             refreshToken: (user as any)?.refreshToken,
+            provider: account?.provider || (user as any)?.provider,
           });
         }
 
@@ -187,6 +189,7 @@ export const authOptions: NextAuthOptions = {
             "activeBrandsCount",
             "theme",
             "mobile",
+            "provider",
           ] as const;
 
           for (const field of updateableFields) {
@@ -228,6 +231,7 @@ export const authOptions: NextAuthOptions = {
           canImpersonate: (token as any)?.canImpersonate,
           theme: (token as any)?.theme,
           mobile: (token as any)?.mobile,
+          provider: (token as any)?.provider,
         };
         return session;
       } catch (error) {

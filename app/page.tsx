@@ -26,11 +26,6 @@ export default function Home() {
     if (res?.url) {
       // Go to Apple. After a successful callback, the redirect() above sends you to /social-login
       window.location.href = res.url;
-    } else {
-      // Fallback if helper didn't return a URL
-      window.location.href = `/api/auth/signin/apple?callbackUrl=${encodeURIComponent(
-        "/social-login"
-      )}`;
     }
   };
 
