@@ -119,6 +119,7 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async signIn({ user, account }) {
+      console.warn(user, account);
       try {
         if (
           (account?.provider === "google" || account?.provider === "apple") &&
@@ -135,6 +136,7 @@ export const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, user, trigger, session, account }) {
+      console.warn(token, user, trigger, session, account);
       try {
         if (user) {
           Object.assign(token, {
@@ -207,6 +209,7 @@ export const authOptions: NextAuthOptions = {
     },
 
     async session({ session, token }) {
+      console.warn(session, token);
       try {
         (session as any).user = {
           name: token?.name,
