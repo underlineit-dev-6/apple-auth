@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "jose": "^6.1.0",
+    "jotai": "^2.14.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
     "next": "15.5.3",
