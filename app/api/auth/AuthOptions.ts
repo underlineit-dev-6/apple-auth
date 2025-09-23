@@ -80,6 +80,13 @@ export const authOptions: NextAuthOptions = {
           : "next-auth.state",
       options: { httpOnly: true, sameSite: "none", secure: true, path: "/" },
     },
+    callbackUrl: {
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Secure-next-auth.callback-url"
+          : "next-auth.callback-url",
+      options: { httpOnly: true, sameSite: "none", secure: true, path: "/" },
+    },
   },
 
   logger: {
