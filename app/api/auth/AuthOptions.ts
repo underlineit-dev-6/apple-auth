@@ -5,8 +5,8 @@ import get from "lodash/get";
 
 export const authOptions: NextAuthOptions = {
   pages: {
-    signIn: "/",
-    error: "/",
+    signIn: "/signin",
+    error: "/signin",
   },
 
   providers: [
