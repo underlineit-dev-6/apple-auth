@@ -96,6 +96,8 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async redirect({ url, baseUrl }) {
+      const session = await getSession();
+      console.error(session, ">>>>>>>>>>>>>session");
       try {
         // Normalize whatever we got (relative or absolute) to a URL object
         const target = new URL(url, baseUrl);
