@@ -98,7 +98,7 @@ export const authOptions: NextAuthOptions = {
     async redirect({ url, baseUrl }) {
       if (url.startsWith("/social-login")) {
         console.warn("Executed", url, baseUrl);
-        return `${baseUrl}/social-login`;
+        return url;
       }
       return baseUrl;
     },
