@@ -18,7 +18,7 @@ export default function Home() {
     try {
       const result: any = await signIn("apple", {
         redirect: false,
-        callbackUrl: "/signin",
+        callbackUrl: "/social-login",
       });
       console.log("Apple sign-in result:", result);
       if (get(result, "error")) {
