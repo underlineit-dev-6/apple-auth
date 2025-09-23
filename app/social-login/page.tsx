@@ -7,7 +7,7 @@ function SocialLogin() {
   const { data: session } = useSession();
   return (
     <h1>
-      Welcome {get(session, "user.email")} - {get(session, "provider")}
+      Welcome {get(session, "user.email")} - {get(session, "user.provider","")}
     </h1>
   );
 }

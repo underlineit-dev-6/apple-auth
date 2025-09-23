@@ -163,7 +163,7 @@ export const authOptions: NextAuthOptions = {
             recentDashboardId: (user as any)?.recentDashboardId,
             idToken: (user as any)?.idToken,
             refreshToken: (user as any)?.refreshToken,
-            provider: account?.provider || (user as any)?.provider,
+            provider: (user as any)?.provider,
           });
         }
 
