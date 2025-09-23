@@ -96,21 +96,11 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async redirect({ url, baseUrl }) {
-      try {
-        const target = new URL(url, baseUrl);
-
-        if (target.pathname.startsWith("/social-login")) {
-          return `${baseUrl}/social-login${target.search}${target.hash}`;
-        }
-
-        if (target.origin === baseUrl) return target.toString();
-
-        if (url.startsWith("/")) return `${baseUrl}${url}`;
-
-        return baseUrl;
-      } catch {
-        return baseUrl;
+      if (url.startsWith("/social-login")) {
+        console.warn("Executed", url, baseUrl);
+        return `${baseUrl}/social-login`;
       }
+      return baseUrl;
     },
     async signIn({ user, account }) {
       try {
