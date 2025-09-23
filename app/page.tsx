@@ -9,10 +9,7 @@ export default function Home() {
   const navigate = useRouter();
   const onSocialLogin = async () => {
     try {
-      const result: any = await signIn("apple", {
-        redirect: false,
-        callbackUrl: "/social-login",
-      });
+      const result: any = await signIn("apple");
       console.log("Apple sign-in result:", result);
       if (get(result, "error")) {
       }
