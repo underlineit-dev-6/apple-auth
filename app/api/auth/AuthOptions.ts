@@ -102,31 +102,6 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    async redirect({ url, baseUrl }) {
-      const session = await getSession();
-      console.error(session, ">>>>>>>>>>>>>session");
-      try {
-        // Normalize whatever we got (relative or absolute) to a URL object
-        const target = new URL(url, baseUrl);
-
-        // If it's /social-login (with or without query/hash), go there
-        if (target.pathname.startsWith("/social-login")) {
-          return `${baseUrl}/social-login${target.search}${target.hash}`;
-        }
-
-        // Allow same-origin URLs as-is
-        if (target.origin === baseUrl) return target.toString();
-
-        // Allow plain relative URLs (defensive)
-        if (url.startsWith("/")) return `${baseUrl}${url}`;
-
-        // Block external redirects
-        return baseUrl;
-      } catch {
-        // If parsing fails, be safe
-        return baseUrl;
-      }
-    },
     async signIn({ user, account }) {
       console.warn(user, account);
       try {
