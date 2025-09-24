@@ -13,7 +13,12 @@ function SocialLogin() {
           {get(session, "user.provider", "")}
         </h1>
       </div>
-      <button onClick={async () => await signOut()}>Logout</button>
+      <button
+        className="flex items-center gap-2 px-4 py-2 rounded-md bg-black text-white cursor-pointer"
+        onClick={async () => await signOut({ callbackUrl: "/" })}
+      >
+        Logout
+      </button>
     </div>
   );
 }
