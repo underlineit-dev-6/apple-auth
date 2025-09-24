@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import AppleProvider from "next-auth/providers/apple";
 import get from "lodash/get";
 import { getSession } from "next-auth/react";
+import GoogleProvider from "next-auth/providers/google";
 
 export const authOptions: NextAuthOptions = {
   pages: {
@@ -59,6 +60,10 @@ export const authOptions: NextAuthOptions = {
           response_mode: "form_post", // Apple posts back
         },
       },
+    }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
 
