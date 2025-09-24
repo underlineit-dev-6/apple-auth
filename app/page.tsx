@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAtom } from "jotai";
 import { appSessionState } from "@/appProvider";
+import { BsGoogle } from "react-icons/bs";
 
 export default function Home() {
   const { data: session } = useSession();
@@ -13,8 +14,8 @@ export default function Home() {
   const [login, setLogin] = useState(false);
 
   const navigate = useRouter();
-  const onSocialLogin = async () => {
-    const res = await signIn("apple", {
+  const onSocialLogin = async (provider: "apple" | "google") => {
+    const res = await signIn(provider, {
       redirect: false,
       callbackUrl: "/social-login",
     });
@@ -30,13 +31,20 @@ export default function Home() {
   };
 
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
+    <div className="flex gap-2 items-center justify-center h-screen">
       <button
         className="flex items-center gap-2 px-4 py-2 rounded-md bg-black text-white cursor-pointer"
-        onClick={onSocialLogin}
+        onClick={() => onSocialLogin("apple")}
       >
         <FaApple size={20} />
         Sign in with Apple
+      </button>
+      <button
+        className="flex items-center gap-2 px-4 py-2 rounded-md bg-black text-white cursor-pointer"
+        onClick={() => onSocialLogin("google")}
+      >
+        <BsGoogle size={20} />
+        Sign in with Google
       </button>
     </div>
   );
