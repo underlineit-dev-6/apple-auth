@@ -1,50 +1,79 @@
 "use client";
-import { signIn, useSession } from "next-auth/react";
-import { get } from "lodash";
+
+import { signIn } from "next-auth/react";
+import { useState, useCallback } from "react";
 import { FaApple } from "react-icons/fa";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { useAtom } from "jotai";
-import { appSessionState } from "@/appProvider";
 import { BsGoogle } from "react-icons/bs";
 
-export default function Home() {
-  const { data: session } = useSession();
-  const [appState, setAppState] = useAtom(appSessionState);
-  const [login, setLogin] = useState(false);
+function getTenantFromHost(host?: string | null) {
+  if (!host) return null;
+  const [hostname] = host.split(":");
+  const parts = (hostname || "").split(".").filter(Boolean);
+  if (parts.length < 3) return null;
+  const sub = parts[0]?.toLowerCase();
+  if (!sub || ["www", "auth"].includes(sub)) return null;
+  return sub;
+}
 
-  const navigate = useRouter();
-  const onSocialLogin = async (provider: "apple" | "google") => {
-    const res = await signIn(provider, {
-      redirect: false,
-      callbackUrl: "/social-login",
-    });
+export default function SignInPage() {
+  const [loggingIn, setLoggingIn] = useState<null | "google" | "apple">(null);
 
-    if (res?.error) {
-      console.error(res.error);
-      return;
-    }
-    if (res?.url) {
-      // Go to Apple. After a successful callback, the redirect() above sends you to /social-login
-      window.location.href = res.url;
-    }
-  };
+  const onSocialLogin = useCallback(
+    async (provider: "google" | "apple") => {
+      if (loggingIn) return; // prevent duplicates
+      setLoggingIn(provider);
+
+      try {
+        const origin =
+          typeof window !== "undefined" ? window.location.origin : "";
+        const host = typeof window !== "undefined" ? window.location.host : "";
+        const tenant = getTenantFromHost(host);
+        const callbackUrl = origin ? `${origin}/social-login` : "/social-login";
+
+        const res = await signIn(provider, {
+          redirect: false,
+          callbackUrl,
+          // include tenant for multi-tenant routing on callback
+          state: JSON.stringify({ tenant, callbackUrl }),
+        });
+
+        if (res?.error) {
+          console.error(res.error);
+          setLoggingIn(null);
+          return;
+        }
+        if (res?.url) {
+          window.location.href = res.url; // hand off to provider
+          return;
+        }
+        // fallback
+        window.location.assign(callbackUrl);
+      } catch (e) {
+        console.error(e);
+        setLoggingIn(null);
+      }
+    },
+    [loggingIn]
+  );
 
   return (
-    <div className="flex gap-2 items-center justify-center h-screen">
+    <div className="flex gap-3 items-center justify-center h-screen">
       <button
-        className="flex items-center gap-2 px-4 py-2 rounded-md bg-black text-white cursor-pointer"
+        className="flex items-center gap-2 px-4 py-2 rounded-md bg-black text-white disabled:opacity-60"
         onClick={() => onSocialLogin("apple")}
+        disabled={loggingIn !== null}
       >
         <FaApple size={20} />
-        Sign in with Apple
+        {loggingIn === "apple" ? "Signing in…" : "Sign in with Apple"}
       </button>
+
       <button
-        className="flex items-center gap-2 px-4 py-2 rounded-md bg-black text-white cursor-pointer"
+        className="flex items-center gap-2 px-4 py-2 rounded-md bg-black text-white disabled:opacity-60"
         onClick={() => onSocialLogin("google")}
+        disabled={loggingIn !== null}
       >
         <BsGoogle size={20} />
-        Sign in with Google
+        {loggingIn === "google" ? "Signing in…" : "Sign in with Google"}
       </button>
     </div>
   );
