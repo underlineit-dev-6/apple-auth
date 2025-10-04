@@ -268,19 +268,6 @@ export const authOptions: NextAuthOptions = {
         return session;
       }
     },
-
-    // Fallback if signIn didn't return a direct URL
-    async redirect({ baseUrl }) {
-      try {
-        const store = await cookies();
-        const tenant = store.get("tenant")?.value;
-        if (tenant && tenant !== "auth")
-          return `https://${tenant}.${BASE_DOMAIN}/social-login`;
-        return baseUrl; // stay on auth.* (debug)
-      } catch {
-        return baseUrl;
-      }
-    },
   },
 
   secret: process.env.NEXTAUTH_SECRET!,

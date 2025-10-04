@@ -10,7 +10,7 @@ function SocialLogin() {
       <div>
         <h1>
           Welcome {get(session, "user.email")} -{" "}
-          {get(session, "user.provider", "")}
+          {get(session, "user.subdomain", "")}
         </h1>
       </div>
       <button
