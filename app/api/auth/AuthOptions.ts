@@ -82,40 +82,26 @@ export const authOptions: NextAuthOptions = {
         domain: "." + BASE_DOMAIN,
       },
     },
-    // Apple cross-site POST compatibility
     pkceCodeVerifier: {
-      name: IS_PROD
-        ? "__Secure-next-auth.pkce.code_verifier"
-        : "next-auth.pkce.code_verifier",
-      options: {
-        httpOnly: true,
-        sameSite: "none",
-        secure: true,
-        path: "/",
-        domain: "." + BASE_DOMAIN,
-      },
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Secure-next-auth.pkce.code_verifier"
+          : "next-auth.pkce.code_verifier",
+      options: { httpOnly: true, sameSite: "none", secure: true, path: "/" },
     },
     state: {
-      name: IS_PROD ? "__Secure-next-auth.state" : "next-auth.state",
-      options: {
-        httpOnly: true,
-        sameSite: "none",
-        secure: true,
-        path: "/",
-        domain: "." + BASE_DOMAIN,
-      },
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Secure-next-auth.state"
+          : "next-auth.state",
+      options: { httpOnly: true, sameSite: "none", secure: true, path: "/" },
     },
     callbackUrl: {
-      name: IS_PROD
-        ? "__Secure-next-auth.callback-url"
-        : "next-auth.callback-url",
-      options: {
-        httpOnly: true,
-        sameSite: "none",
-        secure: true,
-        path: "/",
-        domain: "." + BASE_DOMAIN,
-      },
+      name:
+        process.env.NODE_ENV === "production"
+          ? "__Secure-next-auth.callback-url"
+          : "next-auth.callback-url",
+      options: { httpOnly: true, sameSite: "none", secure: true, path: "/" },
     },
   },
 
