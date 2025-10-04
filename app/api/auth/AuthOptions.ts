@@ -1,14 +1,18 @@
+// app/api/auth/[...nextauth]/route.ts
 import NextAuth, { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import AppleProvider from "next-auth/providers/apple";
-import get from "lodash/get";
-import { getSession } from "next-auth/react";
 import GoogleProvider from "next-auth/providers/google";
+import get from "lodash/get";
+import { cookies } from "next/headers";
+
+const BASE_DOMAIN = process.env.BASE_DOMAIN || "urstruly.xyz";
+const IS_PROD = process.env.NODE_ENV === "production";
 
 export const authOptions: NextAuthOptions = {
   pages: {
-    signIn: "/",
-    error: "/",
+    signIn: "/", // your login page
+    error: "/", // reuse login for errors
   },
 
   providers: [
@@ -16,7 +20,7 @@ export const authOptions: NextAuthOptions = {
       name: "credentials",
       credentials: {
         brandId: { label: "brandId", type: "text" },
-        userData: { label: "userData", type: "text" }, // text, not object
+        userData: { label: "userData", type: "text" },
         url: { label: "url", type: "text" },
         method: { label: "method", type: "text" },
         email: { label: "email", type: "email" },
@@ -32,35 +36,31 @@ export const authOptions: NextAuthOptions = {
             ? JSON.parse(credentials.userData)
             : {};
           const headers: HeadersInit = { "Content-Type": "application/json" };
-
           const bearer = get(userData, "access_token", credentials.token);
-          if (bearer) headers["Authorization"] = `Bearer ${bearer}`;
+          if (bearer) (headers as any).Authorization = `Bearer ${bearer}`;
 
-          // TODO: Call your API and return a user object on success
-          // const res = await fetch(credentials.url!, { method: credentials.method || "POST", headers, body: JSON.stringify(...) });
-          // if (!res.ok) return null;
-          // const user = await res.json();
-          // return user ?? null;
-
+          // TODO: call your tenant-aware API here and return a user object.
+          // Return `null` to fail sign-in.
           return null;
-        } catch (err) {
-          console.error("Authorization error:", err);
+        } catch (e) {
+          console.error("Authorization error:", e);
           return null;
         }
       },
     }),
 
     AppleProvider({
-      clientId: process.env.APPLE_ID!, // Services ID
-      clientSecret: process.env.APPLE_CLIENT_SECRET!, // <-- STRING JWT from your generator
+      clientId: process.env.APPLE_ID!,
+      clientSecret: process.env.APPLE_CLIENT_SECRET!, // prebuilt JWT
       authorization: {
         params: {
           scope: "name email",
           response_type: "code",
-          response_mode: "form_post", // Apple posts back
+          response_mode: "form_post", // Apple posts back to our callback
         },
       },
     }),
+
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
@@ -69,28 +69,56 @@ export const authOptions: NextAuthOptions = {
 
   session: { strategy: "jwt" },
 
-  // Ensure PKCE/state cookies are sent on Apple's cross-site POST callback
+  // Cross-subdomain cookies
   cookies: {
+    // Session cookie for *.urstruly.xyz
+    sessionToken: {
+      name: IS_PROD
+        ? "__Secure-next-auth.session-token"
+        : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: IS_PROD, // true on Vercel (HTTPS)
+        path: "/",
+        domain: "." + BASE_DOMAIN,
+      },
+    },
+
+    // Ensure PKCE/State/Callback cookies work with Apple cross-site POST
     pkceCodeVerifier: {
-      name:
-        process.env.NODE_ENV === "production"
-          ? "__Secure-next-auth.pkce.code_verifier"
-          : "next-auth.pkce.code_verifier",
-      options: { httpOnly: true, sameSite: "none", secure: true, path: "/" },
+      name: IS_PROD
+        ? "__Secure-next-auth.pkce.code_verifier"
+        : "next-auth.pkce.code_verifier",
+      options: {
+        httpOnly: true,
+        sameSite: "none", // Apple cross-site requires None+Secure
+        secure: true,
+        path: "/",
+        domain: "." + BASE_DOMAIN,
+      },
     },
     state: {
-      name:
-        process.env.NODE_ENV === "production"
-          ? "__Secure-next-auth.state"
-          : "next-auth.state",
-      options: { httpOnly: true, sameSite: "none", secure: true, path: "/" },
+      name: IS_PROD ? "__Secure-next-auth.state" : "next-auth.state",
+      options: {
+        httpOnly: true,
+        sameSite: "none",
+        secure: true,
+        path: "/",
+        domain: "." + BASE_DOMAIN,
+      },
     },
     callbackUrl: {
-      name:
-        process.env.NODE_ENV === "production"
-          ? "__Secure-next-auth.callback-url"
-          : "next-auth.callback-url",
-      options: { httpOnly: true, sameSite: "none", secure: true, path: "/" },
+      name: IS_PROD
+        ? "__Secure-next-auth.callback-url"
+        : "next-auth.callback-url",
+      options: {
+        httpOnly: true,
+        sameSite: "none",
+        secure: true,
+        path: "/",
+        domain: "." + BASE_DOMAIN,
+      },
     },
   },
 
@@ -108,7 +136,6 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async signIn({ user, account }) {
-      console.warn(user, account);
       try {
         if (
           (account?.provider === "google" || account?.provider === "apple") &&
@@ -118,14 +145,13 @@ export const authOptions: NextAuthOptions = {
           (user as any).provider = account.provider;
         }
         return true;
-      } catch (error) {
-        console.error("SignIn callback error:", error);
+      } catch (e) {
+        console.error("SignIn callback error:", e);
         return false;
       }
     },
 
-    async jwt({ token, user, trigger, session, account }) {
-      console.warn(token, user, trigger, session, account);
+    async jwt({ token, user, trigger, session }) {
       try {
         if (user) {
           Object.assign(token, {
@@ -157,7 +183,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         if (trigger === "update" && session) {
-          const updateableFields = [
+          const fields = [
             "role",
             "name",
             "email",
@@ -182,23 +208,28 @@ export const authOptions: NextAuthOptions = {
             "mobile",
             "provider",
           ] as const;
-
-          for (const field of updateableFields) {
-            if ((session as any)[field] !== undefined) {
-              (token as any)[field] = (session as any)[field];
-            }
+          for (const f of fields) {
+            if ((session as any)[f] !== undefined)
+              (token as any)[f] = (session as any)[f];
           }
         }
 
+        // Carry tenant from cookie into token (optional but handy)
+        const store = await cookies();
+        const tenant = store.get("tenant")?.value;
+        if (tenant && tenant !== "auth") {
+          (token as any).tenant = tenant;
+          (token as any).subdomain = (token as any).subdomain || tenant;
+        }
+
         return token;
-      } catch (error) {
-        console.error("JWT callback error:", error);
+      } catch (e) {
+        console.error("JWT callback error:", e);
         return token;
       }
     },
 
     async session({ session, token }) {
-      console.warn(session, token);
       try {
         (session as any).user = {
           name: token?.name,
@@ -224,11 +255,27 @@ export const authOptions: NextAuthOptions = {
           theme: (token as any)?.theme,
           mobile: (token as any)?.mobile,
           provider: (token as any)?.provider,
+          tenant: (token as any)?.tenant,
         };
         return session;
-      } catch (error) {
-        console.error("Session callback error:", error);
+      } catch (e) {
+        console.error("Session callback error:", e);
         return session;
+      }
+    },
+
+    async redirect({ baseUrl }) {
+      try {
+        // baseUrl = NEXTAUTH_URL (https://auth.urstruly.xyz)
+        const store = await cookies();
+        const tenant = store.get("tenant")?.value;
+        if (tenant && tenant !== "auth") {
+          // choose your landing path after OAuth
+          return `https://${tenant}.${BASE_DOMAIN}/social-login`;
+        }
+        return baseUrl;
+      } catch {
+        return baseUrl;
       }
     },
   },
