@@ -1,17 +1,15 @@
-// app/api/auth/[...nextauth]/route.ts
 import NextAuth, { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import AppleProvider from "next-auth/providers/apple";
-import GoogleProvider from "next-auth/providers/google";
 import get from "lodash/get";
-import { cookies } from "next/headers";
+import { getSession } from "next-auth/react";
+import GoogleProvider from "next-auth/providers/google";
 
 const BASE_DOMAIN = process.env.BASE_DOMAIN || "urstruly.xyz";
 const IS_PROD = process.env.NODE_ENV === "production";
-
 export const authOptions: NextAuthOptions = {
   pages: {
-    signIn: "/", // login lives on auth.* root
+    signIn: "/",
     error: "/",
   },
 
@@ -20,7 +18,7 @@ export const authOptions: NextAuthOptions = {
       name: "credentials",
       credentials: {
         brandId: { label: "brandId", type: "text" },
-        userData: { label: "userData", type: "text" },
+        userData: { label: "userData", type: "text" }, // text, not object
         url: { label: "url", type: "text" },
         method: { label: "method", type: "text" },
         email: { label: "email", type: "email" },
@@ -31,35 +29,40 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         try {
           if (!credentials) return null;
+
           const userData = credentials.userData
             ? JSON.parse(credentials.userData)
             : {};
           const headers: HeadersInit = { "Content-Type": "application/json" };
-          const bearer = get(userData, "access_token", credentials.token);
-          if (bearer) (headers as any).Authorization = `Bearer ${bearer}`;
 
-          // TODO: Call your tenant-aware API and return a user object (include .subdomain)
-          // Example user object MUST include: { subdomain: "brand1", email: ... }
+          const bearer = get(userData, "access_token", credentials.token);
+          if (bearer) headers["Authorization"] = `Bearer ${bearer}`;
+
+          // TODO: Call your API and return a user object on success
+          // const res = await fetch(credentials.url!, { method: credentials.method || "POST", headers, body: JSON.stringify(...) });
+          // if (!res.ok) return null;
+          // const user = await res.json();
+          // return user ?? null;
+
           return null;
-        } catch (e) {
-          console.error("Authorization error:", e);
+        } catch (err) {
+          console.error("Authorization error:", err);
           return null;
         }
       },
     }),
 
     AppleProvider({
-      clientId: process.env.APPLE_ID!,
-      clientSecret: process.env.APPLE_CLIENT_SECRET!,
+      clientId: process.env.APPLE_ID!, // Services ID
+      clientSecret: process.env.APPLE_CLIENT_SECRET!, // <-- STRING JWT from your generator
       authorization: {
         params: {
           scope: "name email",
           response_type: "code",
-          response_mode: "form_post",
+          response_mode: "form_post", // Apple posts back
         },
       },
     }),
-
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
@@ -68,20 +71,8 @@ export const authOptions: NextAuthOptions = {
 
   session: { strategy: "jwt" },
 
+  // Ensure PKCE/state cookies are sent on Apple's cross-site POST callback
   cookies: {
-    // Cross-subdomain session so auth.* can log you in and tenant.* can read it.
-    sessionToken: {
-      name: IS_PROD
-        ? "__Secure-next-auth.session-token"
-        : "next-auth.session-token",
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: IS_PROD,
-        path: "/",
-        domain: "." + BASE_DOMAIN,
-      },
-    },
     pkceCodeVerifier: {
       name:
         process.env.NODE_ENV === "production"
@@ -103,6 +94,18 @@ export const authOptions: NextAuthOptions = {
           : "next-auth.callback-url",
       options: { httpOnly: true, sameSite: "none", secure: true, path: "/" },
     },
+    sessionToken: {
+      name: IS_PROD
+        ? "__Secure-next-auth.session-token"
+        : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: IS_PROD,
+        path: "/",
+        domain: "." + BASE_DOMAIN,
+      },
+    },
   },
 
   logger: {
@@ -119,6 +122,7 @@ export const authOptions: NextAuthOptions = {
 
   callbacks: {
     async signIn({ user, account }) {
+      console.warn(user, account);
       try {
         if (
           (account?.provider === "google" || account?.provider === "apple") &&
@@ -127,23 +131,15 @@ export const authOptions: NextAuthOptions = {
           (user as any).idToken = account.id_token;
           (user as any).provider = account.provider;
         }
-
-        // ✅ If your user object contains subdomain, redirect directly there
-        const sub = (user as any)?.subdomain;
-        if (sub) {
-          // Send the user straight to their site after the OAuth handshake
-          return `https://${sub}.${BASE_DOMAIN}/social-login`;
-        }
-
-        // Otherwise continue and let redirect() fallback use the tenant cookie
         return true;
-      } catch (e) {
-        console.error("SignIn callback error:", e);
+      } catch (error) {
+        console.error("SignIn callback error:", error);
         return false;
       }
     },
 
-    async jwt({ token, user, trigger, session }) {
+    async jwt({ token, user, trigger, session, account }) {
+      console.warn(token, user, trigger, session, account);
       try {
         if (user) {
           Object.assign(token, {
@@ -175,7 +171,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         if (trigger === "update" && session) {
-          const fields = [
+          const updateableFields = [
             "role",
             "name",
             "email",
@@ -200,27 +196,23 @@ export const authOptions: NextAuthOptions = {
             "mobile",
             "provider",
           ] as const;
-          for (const f of fields)
-            if ((session as any)[f] !== undefined)
-              (token as any)[f] = (session as any)[f];
-        }
 
-        // Optionally copy `tenant` cookie in too
-        const store = await cookies();
-        const tenant = store.get("tenant")?.value;
-        if (tenant && tenant !== "auth") {
-          (token as any).tenant = tenant;
-          (token as any).subdomain = (token as any).subdomain || tenant;
+          for (const field of updateableFields) {
+            if ((session as any)[field] !== undefined) {
+              (token as any)[field] = (session as any)[field];
+            }
+          }
         }
 
         return token;
-      } catch (e) {
-        console.error("JWT callback error:", e);
+      } catch (error) {
+        console.error("JWT callback error:", error);
         return token;
       }
     },
 
     async session({ session, token }) {
+      console.warn(session, token);
       try {
         (session as any).user = {
           name: token?.name,
@@ -246,11 +238,10 @@ export const authOptions: NextAuthOptions = {
           theme: (token as any)?.theme,
           mobile: (token as any)?.mobile,
           provider: (token as any)?.provider,
-          tenant: (token as any)?.tenant,
         };
         return session;
-      } catch (e) {
-        console.error("Session callback error:", e);
+      } catch (error) {
+        console.error("Session callback error:", error);
         return session;
       }
     },
