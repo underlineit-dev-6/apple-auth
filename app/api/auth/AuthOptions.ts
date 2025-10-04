@@ -72,28 +72,43 @@ export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
 
   // Ensure PKCE/state cookies are sent on Apple's cross-site POST callback
+  // Ensure PKCE/state cookies are sent on Apple's cross-site POST callback
   cookies: {
     pkceCodeVerifier: {
-      name:
-        process.env.NODE_ENV === "production"
-          ? "__Secure-next-auth.pkce.code_verifier"
-          : "next-auth.pkce.code_verifier",
-      options: { httpOnly: true, sameSite: "none", secure: true, path: "/" },
+      name: IS_PROD
+        ? "__Secure-next-auth.pkce.code_verifier"
+        : "next-auth.pkce.code_verifier",
+      options: {
+        httpOnly: true,
+        sameSite: "none", // cross-site compatible
+        secure: true, // required with SameSite=None
+        path: "/",
+        domain: "." + BASE_DOMAIN, // <<< share across auth.* and *.urstruly.xyz
+      },
     },
     state: {
-      name:
-        process.env.NODE_ENV === "production"
-          ? "__Secure-next-auth.state"
-          : "next-auth.state",
-      options: { httpOnly: true, sameSite: "none", secure: true, path: "/" },
+      name: IS_PROD ? "__Secure-next-auth.state" : "next-auth.state",
+      options: {
+        httpOnly: true,
+        sameSite: "none",
+        secure: true,
+        path: "/",
+        domain: "." + BASE_DOMAIN, // <<< important
+      },
     },
     callbackUrl: {
-      name:
-        process.env.NODE_ENV === "production"
-          ? "__Secure-next-auth.callback-url"
-          : "next-auth.callback-url",
-      options: { httpOnly: true, sameSite: "none", secure: true, path: "/" },
+      name: IS_PROD
+        ? "__Secure-next-auth.callback-url"
+        : "next-auth.callback-url",
+      options: {
+        httpOnly: true,
+        sameSite: "none",
+        secure: true,
+        path: "/",
+        domain: "." + BASE_DOMAIN, // <<< important
+      },
     },
+    // Session cookie for *.urstruly.xyz (you already had this right)
     sessionToken: {
       name: IS_PROD
         ? "__Secure-next-auth.session-token"
