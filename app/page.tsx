@@ -6,10 +6,20 @@ import { BsGoogle } from "react-icons/bs";
 
 export default function Home() {
   const onSocialLogin = async (provider: "apple" | "google") => {
-    // Let NextAuth redirect; our redirect() callback will send to /social-login on the tenant subdomain
-    await signIn(provider); // default redirect=true
-  };
+    const res = await signIn(provider, {
+      redirect: false,
+      callbackUrl: "/social-login",
+    });
 
+    if (res?.error) {
+      console.error(res.error);
+      return;
+    }
+    if (res?.url) {
+      // Go to Apple. After a successful callback, the redirect() above sends you to /social-login
+      window.location.href = res.url;
+    }
+  };
   return (
     <div className="flex gap-2 items-center justify-center h-screen">
       <button

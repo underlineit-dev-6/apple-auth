@@ -11,8 +11,8 @@ const IS_PROD = process.env.NODE_ENV === "production";
 
 export const authOptions: NextAuthOptions = {
   pages: {
-    signIn: "/", // your login page
-    error: "/", // reuse login for errors
+    signIn: "/", // login lives on auth.* root
+    error: "/",
   },
 
   providers: [
@@ -31,7 +31,6 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         try {
           if (!credentials) return null;
-
           const userData = credentials.userData
             ? JSON.parse(credentials.userData)
             : {};
@@ -39,8 +38,8 @@ export const authOptions: NextAuthOptions = {
           const bearer = get(userData, "access_token", credentials.token);
           if (bearer) (headers as any).Authorization = `Bearer ${bearer}`;
 
-          // TODO: call your tenant-aware API here and return a user object.
-          // Return `null` to fail sign-in.
+          // TODO: Call your tenant-aware API and return a user object (include .subdomain)
+          // Example user object MUST include: { subdomain: "brand1", email: ... }
           return null;
         } catch (e) {
           console.error("Authorization error:", e);
@@ -51,12 +50,12 @@ export const authOptions: NextAuthOptions = {
 
     AppleProvider({
       clientId: process.env.APPLE_ID!,
-      clientSecret: process.env.APPLE_CLIENT_SECRET!, // prebuilt JWT
+      clientSecret: process.env.APPLE_CLIENT_SECRET!,
       authorization: {
         params: {
           scope: "name email",
           response_type: "code",
-          response_mode: "form_post", // Apple posts back to our callback
+          response_mode: "form_post",
         },
       },
     }),
@@ -69,9 +68,8 @@ export const authOptions: NextAuthOptions = {
 
   session: { strategy: "jwt" },
 
-  // Cross-subdomain cookies
   cookies: {
-    // Session cookie for *.urstruly.xyz
+    // Cross-subdomain session so auth.* can log you in and tenant.* can read it.
     sessionToken: {
       name: IS_PROD
         ? "__Secure-next-auth.session-token"
@@ -79,20 +77,19 @@ export const authOptions: NextAuthOptions = {
       options: {
         httpOnly: true,
         sameSite: "lax",
-        secure: IS_PROD, // true on Vercel (HTTPS)
+        secure: IS_PROD,
         path: "/",
         domain: "." + BASE_DOMAIN,
       },
     },
-
-    // Ensure PKCE/State/Callback cookies work with Apple cross-site POST
+    // Apple cross-site POST compatibility
     pkceCodeVerifier: {
       name: IS_PROD
         ? "__Secure-next-auth.pkce.code_verifier"
         : "next-auth.pkce.code_verifier",
       options: {
         httpOnly: true,
-        sameSite: "none", // Apple cross-site requires None+Secure
+        sameSite: "none",
         secure: true,
         path: "/",
         domain: "." + BASE_DOMAIN,
@@ -144,6 +141,15 @@ export const authOptions: NextAuthOptions = {
           (user as any).idToken = account.id_token;
           (user as any).provider = account.provider;
         }
+
+        // ✅ If your user object contains subdomain, redirect directly there
+        const sub = (user as any)?.subdomain;
+        if (sub) {
+          // Send the user straight to their site after the OAuth handshake
+          return `https://${sub}.${BASE_DOMAIN}/social-login`;
+        }
+
+        // Otherwise continue and let redirect() fallback use the tenant cookie
         return true;
       } catch (e) {
         console.error("SignIn callback error:", e);
@@ -208,13 +214,12 @@ export const authOptions: NextAuthOptions = {
             "mobile",
             "provider",
           ] as const;
-          for (const f of fields) {
+          for (const f of fields)
             if ((session as any)[f] !== undefined)
               (token as any)[f] = (session as any)[f];
-          }
         }
 
-        // Carry tenant from cookie into token (optional but handy)
+        // Optionally copy `tenant` cookie in too
         const store = await cookies();
         const tenant = store.get("tenant")?.value;
         if (tenant && tenant !== "auth") {
@@ -264,16 +269,14 @@ export const authOptions: NextAuthOptions = {
       }
     },
 
+    // Fallback if signIn didn't return a direct URL
     async redirect({ baseUrl }) {
       try {
-        // baseUrl = NEXTAUTH_URL (https://auth.urstruly.xyz)
         const store = await cookies();
         const tenant = store.get("tenant")?.value;
-        if (tenant && tenant !== "auth") {
-          // choose your landing path after OAuth
+        if (tenant && tenant !== "auth")
           return `https://${tenant}.${BASE_DOMAIN}/social-login`;
-        }
-        return baseUrl;
+        return baseUrl; // stay on auth.* (debug)
       } catch {
         return baseUrl;
       }
