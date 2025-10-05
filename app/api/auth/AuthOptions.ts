@@ -81,7 +81,7 @@ export const authOptions: NextAuthOptions = {
         sameSite: "none",
         secure: true,
         path: "/",
-        domain: "." + BASE_DOMAIN, // <<< important
+        domain: "." + BASE_DOMAIN,
       },
     },
     state: {
@@ -91,7 +91,7 @@ export const authOptions: NextAuthOptions = {
         sameSite: "none",
         secure: true,
         path: "/",
-        domain: "." + BASE_DOMAIN, // <<< important
+        domain: "." + BASE_DOMAIN,
       },
     },
     callbackUrl: {
@@ -103,7 +103,7 @@ export const authOptions: NextAuthOptions = {
         sameSite: "none",
         secure: true,
         path: "/",
-        domain: "." + BASE_DOMAIN, // <<< important
+        domain: "." + BASE_DOMAIN,
       },
     },
     sessionToken: {

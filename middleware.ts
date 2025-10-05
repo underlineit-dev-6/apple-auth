@@ -1,63 +1,32 @@
 // middleware.ts
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 
 const BASE_DOMAIN = process.env.BASE_DOMAIN || "urstruly.xyz";
 const AUTH_HOST = `auth.${BASE_DOMAIN}`;
 
-function stripPort(host?: string | null) {
-  return host ? host.split(":")[0] : null;
-}
+export function middleware(req: NextRequest) {
+  const url = new URL(req.url);
+  const host = (req.headers.get("host") || "").split(":")[0];
 
-function getSubdomain(host?: string | null) {
-  const hostname = stripPort(host);
-  if (!hostname) return null;
-  if (hostname === BASE_DOMAIN) return null;
-  if (!hostname.endsWith("." + BASE_DOMAIN)) return null;
-  const left = hostname.slice(0, -(BASE_DOMAIN.length + 1));
-  const labels = left.split(".");
-  const sub = labels[labels.length - 1] || null;
-  if (!sub) return null;
-  if (sub === "www" || sub === "auth") return null;
-  return sub;
-}
+  // If NextAuth routes are requested on a tenant host, bounce to auth.<domain>
+  const isNextAuthRoute =
+    url.pathname === "/api/auth" ||
+    url.pathname.startsWith("/api/auth/signin") ||
+    url.pathname.startsWith("/api/auth/callback") ||
+    url.pathname.startsWith("/api/auth/verify-request") ||
+    url.pathname.startsWith("/api/auth/session");
 
-export async function middleware(req: NextRequest) {
-  const host = stripPort(req.headers.get("host")) || "";
-  const tenant = getSubdomain(host);
-
-  // Forward tenant header
-  const headers = new Headers(req.headers);
-  if (tenant) headers.set("x-tenant", tenant);
-
-  // Persist base-domain tenant cookie (auth | actual tenant | "")
-  const cookieTenant = tenant ?? (host === AUTH_HOST ? "auth" : "");
-  const res = NextResponse.next({ request: { headers } });
-  res.cookies.set("tenant", cookieTenant, {
-    domain: "." + BASE_DOMAIN,
-    path: "/",
-    httpOnly: false,
-    sameSite: "lax",
-    secure: true,
-  });
-
-  // 🔒 Treat each subdomain as a separate site:
-  // If the session belongs to a different subdomain, redirect to this site's login
-  try {
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-    const tokenSub = (token as any)?.subdomain || (token as any)?.tenant;
-
-    if (tenant && tokenSub && tenant !== tokenSub) {
-      // Not the right brand for this session → force local login page
-      const loginUrl = new URL("/", req.url);
-      return NextResponse.redirect(loginUrl);
-    }
-  } catch {
-    // ignore if no token or error
+  if (host !== AUTH_HOST && isNextAuthRoute) {
+    url.hostname = AUTH_HOST;
+    url.protocol = "https:";
+    url.port = "";
+    // 307 preserves method/body if any POST is used
+    return NextResponse.redirect(url, 307);
   }
 
-  return res;
+  // …keep your existing tenant header/cookie logic here…
+  return NextResponse.next();
 }
 
 export const config = {
