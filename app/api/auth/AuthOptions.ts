@@ -165,143 +165,143 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  callbacks: {
-    async redirect({ url, baseUrl }) {
-      try {
-        const target = new URL(url, baseUrl);
-        const isTenant =
-          target.protocol === "https:" &&
-          (target.hostname === BASE_DOMAIN ||
-            target.hostname.endsWith("." + BASE_DOMAIN));
-        if (isTenant) return target.toString();
-      } catch {}
-      return baseUrl; // stay on auth host only if target isn’t a tenant URL
-    },
-    async signIn({ user, account }) {
-      console.warn(user, account);
-      try {
-        if (
-          (account?.provider === "google" || account?.provider === "apple") &&
-          account?.id_token
-        ) {
-          (user as any).idToken = account.id_token;
-          (user as any).provider = account.provider;
-        }
-        return true;
-      } catch (error) {
-        console.error("SignIn callback error:", error);
-        return false;
-      }
-    },
+  // callbacks: {
+  //   async redirect({ url, baseUrl }) {
+  //     try {
+  //       const target = new URL(url, baseUrl);
+  //       const isTenant =
+  //         target.protocol === "https:" &&
+  //         (target.hostname === BASE_DOMAIN ||
+  //           target.hostname.endsWith("." + BASE_DOMAIN));
+  //       if (isTenant) return target.toString();
+  //     } catch {}
+  //     return baseUrl; // stay on auth host only if target isn’t a tenant URL
+  //   },
+  //   async signIn({ user, account }) {
+  //     console.warn(user, account);
+  //     try {
+  //       if (
+  //         (account?.provider === "google" || account?.provider === "apple") &&
+  //         account?.id_token
+  //       ) {
+  //         (user as any).idToken = account.id_token;
+  //         (user as any).provider = account.provider;
+  //       }
+  //       return true;
+  //     } catch (error) {
+  //       console.error("SignIn callback error:", error);
+  //       return false;
+  //     }
+  //   },
 
-    async jwt({ token, user, trigger, session, account }) {
-      console.warn(token, user, trigger, session, account);
-      try {
-        if (user) {
-          Object.assign(token, {
-            name: (user as any)?.name,
-            mobile: (user as any)?.mobile,
-            email: (user as any)?.email,
-            role: (user as any)?.role,
-            token: (user as any)?.token,
-            theme: (user as any)?.theme,
-            _id: (user as any)?._id,
-            profileColor: (user as any)?.profileColor,
-            timeZone: (user as any)?.timeZone,
-            profilePicture: (user as any)?.profilePicture,
-            deviceId: (user as any)?.deviceId,
-            recentBrandId: (user as any)?.recentBrandId,
-            activeBrandsCount: (user as any)?.activeBrandsCount,
-            canImpersonate: (user as any)?.canImpersonate,
-            displayRoleName: (user as any)?.displayRoleName,
-            brandId: (user as any)?.brandId,
-            brand: (user as any)?.brand,
-            subdomain: (user as any)?.subdomain,
-            recentBoardId: (user as any)?.recentBoardId,
-            recentWorkspaceId: (user as any)?.recentWorkspaceId,
-            recentDashboardId: (user as any)?.recentDashboardId,
-            idToken: (user as any)?.idToken,
-            refreshToken: (user as any)?.refreshToken,
-            provider: (user as any)?.provider,
-          });
-        }
+  //   async jwt({ token, user, trigger, session, account }) {
+  //     console.warn(token, user, trigger, session, account);
+  //     try {
+  //       if (user) {
+  //         Object.assign(token, {
+  //           name: (user as any)?.name,
+  //           mobile: (user as any)?.mobile,
+  //           email: (user as any)?.email,
+  //           role: (user as any)?.role,
+  //           token: (user as any)?.token,
+  //           theme: (user as any)?.theme,
+  //           _id: (user as any)?._id,
+  //           profileColor: (user as any)?.profileColor,
+  //           timeZone: (user as any)?.timeZone,
+  //           profilePicture: (user as any)?.profilePicture,
+  //           deviceId: (user as any)?.deviceId,
+  //           recentBrandId: (user as any)?.recentBrandId,
+  //           activeBrandsCount: (user as any)?.activeBrandsCount,
+  //           canImpersonate: (user as any)?.canImpersonate,
+  //           displayRoleName: (user as any)?.displayRoleName,
+  //           brandId: (user as any)?.brandId,
+  //           brand: (user as any)?.brand,
+  //           subdomain: (user as any)?.subdomain,
+  //           recentBoardId: (user as any)?.recentBoardId,
+  //           recentWorkspaceId: (user as any)?.recentWorkspaceId,
+  //           recentDashboardId: (user as any)?.recentDashboardId,
+  //           idToken: (user as any)?.idToken,
+  //           refreshToken: (user as any)?.refreshToken,
+  //           provider: (user as any)?.provider,
+  //         });
+  //       }
 
-        if (trigger === "update" && session) {
-          const updateableFields = [
-            "role",
-            "name",
-            "email",
-            "displayRoleName",
-            "token",
-            "_id",
-            "profileColor",
-            "timeZone",
-            "profilePicture",
-            "deviceId",
-            "brandId",
-            "brand",
-            "subdomain",
-            "recentWorkspaceId",
-            "recentBoardId",
-            "recentDashboardId",
-            "refreshToken",
-            "recentBrandId",
-            "canImpersonate",
-            "activeBrandsCount",
-            "theme",
-            "mobile",
-            "provider",
-          ] as const;
+  //       if (trigger === "update" && session) {
+  //         const updateableFields = [
+  //           "role",
+  //           "name",
+  //           "email",
+  //           "displayRoleName",
+  //           "token",
+  //           "_id",
+  //           "profileColor",
+  //           "timeZone",
+  //           "profilePicture",
+  //           "deviceId",
+  //           "brandId",
+  //           "brand",
+  //           "subdomain",
+  //           "recentWorkspaceId",
+  //           "recentBoardId",
+  //           "recentDashboardId",
+  //           "refreshToken",
+  //           "recentBrandId",
+  //           "canImpersonate",
+  //           "activeBrandsCount",
+  //           "theme",
+  //           "mobile",
+  //           "provider",
+  //         ] as const;
 
-          for (const field of updateableFields) {
-            if ((session as any)[field] !== undefined) {
-              (token as any)[field] = (session as any)[field];
-            }
-          }
-        }
+  //         for (const field of updateableFields) {
+  //           if ((session as any)[field] !== undefined) {
+  //             (token as any)[field] = (session as any)[field];
+  //           }
+  //         }
+  //       }
 
-        return token;
-      } catch (error) {
-        console.error("JWT callback error:", error);
-        return token;
-      }
-    },
+  //       return token;
+  //     } catch (error) {
+  //       console.error("JWT callback error:", error);
+  //       return token;
+  //     }
+  //   },
 
-    async session({ session, token }) {
-      console.warn(session, token);
-      try {
-        (session as any).user = {
-          name: token?.name,
-          email: token?.email,
-          role: (token as any)?.role,
-          displayRoleName: (token as any)?.displayRoleName,
-          token: (token as any)?.token,
-          _id: (token as any)?._id,
-          profileColor: (token as any)?.profileColor,
-          timeZone: (token as any)?.timeZone,
-          profilePicture: (token as any)?.profilePicture,
-          deviceId: (token as any)?.deviceId,
-          brandId: (token as any)?.brandId,
-          brand: (token as any)?.brand,
-          subdomain: (token as any)?.subdomain,
-          recentWorkspaceId: (token as any)?.recentWorkspaceId,
-          recentBoardId: (token as any)?.recentBoardId,
-          recentDashboardId: (token as any)?.recentDashboardId,
-          idToken: (token as any)?.idToken,
-          recentBrandId: (token as any)?.recentBrandId,
-          activeBrandsCount: (token as any)?.activeBrandsCount,
-          canImpersonate: (token as any)?.canImpersonate,
-          theme: (token as any)?.theme,
-          mobile: (token as any)?.mobile,
-          provider: (token as any)?.provider,
-        };
-        return session;
-      } catch (error) {
-        console.error("Session callback error:", error);
-        return session;
-      }
-    },
-  },
+  //   async session({ session, token }) {
+  //     console.warn(session, token);
+  //     try {
+  //       (session as any).user = {
+  //         name: token?.name,
+  //         email: token?.email,
+  //         role: (token as any)?.role,
+  //         displayRoleName: (token as any)?.displayRoleName,
+  //         token: (token as any)?.token,
+  //         _id: (token as any)?._id,
+  //         profileColor: (token as any)?.profileColor,
+  //         timeZone: (token as any)?.timeZone,
+  //         profilePicture: (token as any)?.profilePicture,
+  //         deviceId: (token as any)?.deviceId,
+  //         brandId: (token as any)?.brandId,
+  //         brand: (token as any)?.brand,
+  //         subdomain: (token as any)?.subdomain,
+  //         recentWorkspaceId: (token as any)?.recentWorkspaceId,
+  //         recentBoardId: (token as any)?.recentBoardId,
+  //         recentDashboardId: (token as any)?.recentDashboardId,
+  //         idToken: (token as any)?.idToken,
+  //         recentBrandId: (token as any)?.recentBrandId,
+  //         activeBrandsCount: (token as any)?.activeBrandsCount,
+  //         canImpersonate: (token as any)?.canImpersonate,
+  //         theme: (token as any)?.theme,
+  //         mobile: (token as any)?.mobile,
+  //         provider: (token as any)?.provider,
+  //       };
+  //       return session;
+  //     } catch (error) {
+  //       console.error("Session callback error:", error);
+  //       return session;
+  //     }
+  //   },
+  // },
 
   secret: process.env.NEXTAUTH_SECRET!,
 };
