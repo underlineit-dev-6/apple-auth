@@ -169,19 +169,13 @@ export const authOptions: NextAuthOptions = {
     async redirect({ url, baseUrl }) {
       try {
         const target = new URL(url, baseUrl);
-        // allow any https subdomain of the base domain
-        if (
+        const isTenant =
           target.protocol === "https:" &&
           (target.hostname === BASE_DOMAIN ||
-            target.hostname.endsWith("." + BASE_DOMAIN))
-        ) {
-          return target.toString();
-        }
-        // fallback to home on auth domain
-        return baseUrl;
-      } catch {
-        return baseUrl;
-      }
+            target.hostname.endsWith("." + BASE_DOMAIN));
+        if (isTenant) return target.toString();
+      } catch {}
+      return baseUrl; // stay on auth host only if target isn’t a tenant URL
     },
     async signIn({ user, account }) {
       console.warn(user, account);
