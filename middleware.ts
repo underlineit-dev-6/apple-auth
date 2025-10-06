@@ -4,8 +4,9 @@ import { NextResponse } from "next/server";
 
 const AUTH_HOST = "auth.urstruly.xyz".replace(/^https?:\/\//, "");
 // fallback
-
+console.warn(AUTH_HOST, "1");
 const RESERVED = new Set(["www", "auth"]);
+console.warn(RESERVED, "2");
 
 function normalizeHost(req: NextRequest) {
   const h =
@@ -17,6 +18,7 @@ function normalizeHost(req: NextRequest) {
 }
 
 function getSubdomain(host: string) {
+  console.warn(host, "3");
   if (!host || host === AUTH_HOST) return null;
   const parts = host.split(".");
   if (parts.length < 3) return null;
@@ -27,6 +29,7 @@ function getSubdomain(host: string) {
 export function middleware(req: NextRequest) {
   const url = req.nextUrl;
   const host = normalizeHost(req);
+  console.warn(host, "4");
 
   // 1) Proxy ONLY /api/auth/* to central auth (rewrite, not redirect)
   if (url.pathname.startsWith("/api/auth/")) {
@@ -42,6 +45,7 @@ export function middleware(req: NextRequest) {
 
   // 2) Set x-tenant header for app routes
   const sub = getSubdomain(host);
+  console.warn(sub, "5");
   const requestHeaders = new Headers(req.headers);
   if (sub) requestHeaders.set("x-tenant", sub);
 
