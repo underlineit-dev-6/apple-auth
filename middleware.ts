@@ -2,11 +2,10 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-const AUTH_HOST = "auth.urstruly.xyz"?.replace(/^https?:\/\//, "");
+const AUTH_HOST = "auth.urstruly.xyz".replace(/^https?:\/\//, "");
+// fallback
 
 const RESERVED = new Set(["www", "auth"]);
-const STATIC_EXCLUDE =
-  "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|assets).*)";
 
 function normalizeHost(req: NextRequest) {
   const h =
@@ -18,8 +17,7 @@ function normalizeHost(req: NextRequest) {
 }
 
 function getSubdomain(host: string) {
-  if (!host) return null;
-  if (host === AUTH_HOST) return null; // never set tenant on auth host
+  if (!host || host === AUTH_HOST) return null;
   const parts = host.split(".");
   if (parts.length < 3) return null;
   const sub = parts[0];
@@ -30,21 +28,19 @@ export function middleware(req: NextRequest) {
   const url = req.nextUrl;
   const host = normalizeHost(req);
 
-  // 1) Proxy ONLY /api/auth/* to the central auth host (rewrite, not redirect)
+  // 1) Proxy ONLY /api/auth/* to central auth (rewrite, not redirect)
   if (url.pathname.startsWith("/api/auth/")) {
-    // Avoid loops if someone accidentally deploys this middleware on the auth app
-    if (host === AUTH_HOST) return NextResponse.next();
+    if (host === AUTH_HOST) return NextResponse.next(); // safety: no loop on auth host
 
-    const proxied = new URL(url); // clone
+    const proxied = new URL(url);
     proxied.protocol = "https:";
     proxied.hostname = AUTH_HOST;
     proxied.host = AUTH_HOST;
 
-    // Preserve original callbackUrl etc. in query string automatically
     return NextResponse.rewrite(proxied);
   }
 
-  // 2) Set x-tenant header for app pages (not for /api/auth/*)
+  // 2) Set x-tenant header for app routes
   const sub = getSubdomain(host);
   const requestHeaders = new Headers(req.headers);
   if (sub) requestHeaders.set("x-tenant", sub);
@@ -52,5 +48,9 @@ export function middleware(req: NextRequest) {
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
-// Include everything except common statics; we DO want /api/auth/* to hit this file
-export const config = { matcher: [STATIC_EXCLUDE] };
+// ⬇️ Must be a literal, no variables
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|assets).*)",
+  ],
+};
