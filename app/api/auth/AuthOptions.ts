@@ -72,52 +72,86 @@ export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
 
   cookies: {
-    pkceCodeVerifier: {
-      name: IS_PROD
-        ? "__Secure-next-auth.pkce.code_verifier"
-        : "next-auth.pkce.code_verifier",
-      options: {
-        httpOnly: true,
-        sameSite: "none",
-        secure: true,
-        path: "/",
-        domain: "." + BASE_DOMAIN,
-      },
-    },
-    state: {
-      name: IS_PROD ? "__Secure-next-auth.state" : "next-auth.state",
-      options: {
-        httpOnly: true,
-        sameSite: "none",
-        secure: true,
-        path: "/",
-        domain: "." + BASE_DOMAIN,
-      },
-    },
-    callbackUrl: {
-      name: IS_PROD
-        ? "__Secure-next-auth.callback-url"
-        : "next-auth.callback-url",
-      options: {
-        httpOnly: true,
-        sameSite: "none",
-        secure: true,
-        path: "/",
-        domain: "." + BASE_DOMAIN,
-      },
-    },
-    sessionToken: {
-      name: IS_PROD
-        ? "__Secure-next-auth.session-token"
-        : "next-auth.session-token",
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: IS_PROD,
-        path: "/",
-        domain: "." + BASE_DOMAIN,
-      },
-    },
+    pkceCodeVerifier: IS_PROD
+      ? {
+          name: "__Secure-next-auth.pkce.code_verifier",
+          options: {
+            httpOnly: true,
+            sameSite: "lax",
+            secure: true,
+            path: "/",
+            domain: "." + BASE_DOMAIN,
+          },
+        }
+      : {
+          name: "next-auth.pkce.code_verifier",
+          options: {
+            httpOnly: true,
+            sameSite: "lax",
+            secure: false,
+            path: "/",
+          },
+        },
+    state: IS_PROD
+      ? {
+          name: "__Secure-next-auth.state",
+          options: {
+            httpOnly: true,
+            sameSite: "lax",
+            secure: true,
+            path: "/",
+            domain: "." + BASE_DOMAIN,
+          },
+        }
+      : {
+          name: "next-auth.state",
+          options: {
+            httpOnly: true,
+            sameSite: "lax",
+            secure: false,
+            path: "/",
+          },
+        },
+    callbackUrl: IS_PROD
+      ? {
+          name: "__Secure-next-auth.callback-url",
+          options: {
+            httpOnly: true,
+            sameSite: "lax",
+            secure: true,
+            path: "/",
+            domain: "." + BASE_DOMAIN,
+          },
+        }
+      : {
+          name: "next-auth.callback-url",
+          options: {
+            httpOnly: true,
+            sameSite: "lax",
+            secure: false,
+            path: "/",
+          },
+        },
+    sessionToken: IS_PROD
+      ? {
+          name: "__Secure-next-auth.session-token",
+          options: {
+            httpOnly: true,
+            sameSite: "lax",
+            secure: true,
+            path: "/",
+            domain: "." + BASE_DOMAIN,
+          },
+        }
+      : {
+          name: "next-auth.session-token",
+          options: {
+            httpOnly: true,
+            sameSite: "lax",
+            secure: false,
+            path: "/",
+          },
+        },
   },
   logger: {
     error(code, metadata) {
@@ -132,6 +166,23 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      try {
+        const target = new URL(url, baseUrl);
+        // allow any https subdomain of the base domain
+        if (
+          target.protocol === "https:" &&
+          (target.hostname === BASE_DOMAIN ||
+            target.hostname.endsWith("." + BASE_DOMAIN))
+        ) {
+          return target.toString();
+        }
+        // fallback to home on auth domain
+        return baseUrl;
+      } catch {
+        return baseUrl;
+      }
+    },
     async signIn({ user, account }) {
       console.warn(user, account);
       try {
