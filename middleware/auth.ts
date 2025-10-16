@@ -36,9 +36,23 @@ export function authMiddleware(req: NextRequest) {
   if (pathname.startsWith("/api/auth/")) return NextResponse.next();
 
   const hasSession = Boolean(req.cookies.get(SESSION_COOKIE)?.value);
-  if (!hasSession) return NextResponse.next();
 
-  // Prefer NextAuth callback-url, else our tenant fallback
+  // ✅ Safety net after logout: if user is on auth host without a session,
+  // send them back to the tenant if we know it.
+  if (!hasSession) {
+    // Trigger on root or any non-API path that auth might redirect to post-signout
+    if (pathname === "/" || pathname === "" || pathname === "/signed-out") {
+      const fb = req.cookies.get(TENANT_RETURN_COOKIE)?.value;
+      if (fb && allowedTenant(fb)) {
+        const res = NextResponse.redirect(new URL(fb));
+        res.cookies.delete(TENANT_RETURN_COOKIE);
+        return res;
+      }
+    }
+    return NextResponse.next();
+  }
+
+  // (existing post-login bounce logic)
   const cb = req.cookies.get(CALLBACK_COOKIE)?.value;
   const fb = req.cookies.get(TENANT_RETURN_COOKIE)?.value;
 
@@ -48,15 +62,12 @@ export function authMiddleware(req: NextRequest) {
 
   if (!target) return NextResponse.next();
 
-  const currentUrl = req.nextUrl.toString();
-  // Guard: do not redirect to the same URL and never to the auth host
   try {
     const t = new URL(target);
-    if (t.toString() === currentUrl || t.hostname === AUTH_HOST) {
+    if (t.toString() === req.nextUrl.toString() || t.hostname === AUTH_HOST) {
       return NextResponse.next();
     }
     const res = NextResponse.redirect(t);
-    // Prevent re-bounce loops
     res.cookies.delete(CALLBACK_COOKIE);
     res.cookies.delete(TENANT_RETURN_COOKIE);
     return res;
