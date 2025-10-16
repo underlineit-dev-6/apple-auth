@@ -15,7 +15,12 @@ function SocialLogin() {
       </div>
       <button
         className="flex items-center gap-2 px-4 py-2 rounded-md bg-black text-white cursor-pointer"
-        onClick={async () => await signOut({ callbackUrl: "/" })}
+        onClick={() =>
+          signOut({
+            callbackUrl: `${window.location.origin}/`, // → https://brand1.domain.com/
+            redirect: true,
+          })
+        }
       >
         Logout
       </button>

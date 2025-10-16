@@ -37,28 +37,20 @@ export function authMiddleware(req: NextRequest) {
 
   const hasSession = Boolean(req.cookies.get(SESSION_COOKIE)?.value);
 
-  // If there is NO session on the auth host, redirect out aggressively.
   if (!hasSession) {
-    // Highest priority: explicit callbackUrl on the URL itself
-    const urlParamCb = searchParams.get("callbackUrl");
-    // Then NextAuth cookie
+    const urlParamCb = req.nextUrl.searchParams.get("callbackUrl");
     const cookieCb = req.cookies.get(CALLBACK_COOKIE)?.value;
-    // Then our fallback from tenantMiddleware
     const fb = req.cookies.get(TENANT_RETURN_COOKIE)?.value;
 
     const target = [urlParamCb, cookieCb, fb].find(
       (v) => v && allowedTenant(v!)
     );
-
     if (target) {
       const res = NextResponse.redirect(new URL(target!));
-      // Clean up any breadcrumbs
       res.cookies.delete(CALLBACK_COOKIE);
       res.cookies.delete(TENANT_RETURN_COOKIE);
       return res;
     }
-
-    // Nothing usable — just continue so the auth host renders its page
     return NextResponse.next();
   }
 
