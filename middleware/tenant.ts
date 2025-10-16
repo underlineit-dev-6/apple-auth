@@ -17,26 +17,35 @@ export function tenantMiddleware(req: NextRequest) {
   // Proxy ONLY /api/auth/* to auth host
   if (url.pathname.startsWith("/api/auth/")) {
     if (host === AUTH_HOST) return NextResponse.next();
+
     const proxied = new URL(url);
     proxied.protocol = "https:";
     proxied.hostname = AUTH_HOST;
     proxied.host = AUTH_HOST;
 
-    // Preserve original tenant host for server use if needed
-    const res = NextResponse.rewrite(proxied, {
-      request: { headers: new Headers(req.headers) },
+    // ⬇️ Forward original headers + attach x-tenant-origin for the auth app
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set("x-tenant-origin", host);
+
+    return NextResponse.rewrite(proxied, {
+      request: { headers: requestHeaders },
     });
-    res.headers.set("x-tenant-origin", host);
-    return res;
   }
 
   const parts = host.split(".");
   const sub = parts.length >= 3 ? parts[0] : null;
 
+  // ⬇️ Clone request headers and attach x-tenant for the app to consume
+  const requestHeaders = new Headers(req.headers);
+  if (sub && sub !== "www" && sub !== "auth") {
+    requestHeaders.set("x-tenant", sub);
+  }
+
   const res = NextResponse.next({
-    request: { headers: new Headers(req.headers) },
+    request: { headers: requestHeaders }, // <-- important
   });
-  if (sub && sub !== "www" && sub !== "auth") res.headers.set("x-tenant", sub);
+
+  // ❌ Do NOT set res.headers.set("x-tenant", ...) — app won’t see it.
 
   // Set a fallback return URL for post-auth once per visit window
   if (!req.cookies.get("tenant-return")) {
