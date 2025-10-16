@@ -1,9 +1,8 @@
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
 import { tenantMiddleware } from "./middleware/tenant";
 import { authMiddleware } from "./middleware/auth";
 
-const AUTH_HOST = "auth.urstruly.xyz";
+const AUTH_HOST = `auth.${process.env.BASE_DOMAIN || "urstruly.xyz"}`;
 
 export function middleware(req: NextRequest) {
   const host = (
@@ -14,13 +13,10 @@ export function middleware(req: NextRequest) {
     .replace(/:\d+$/, "")
     .toLowerCase();
 
-  if (host === AUTH_HOST) {
-    return authMiddleware(req);
-  }
+  if (host === AUTH_HOST) return authMiddleware(req);
   return tenantMiddleware(req);
 }
 
-// matcher must be literal
 export const config = {
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|assets).*)",

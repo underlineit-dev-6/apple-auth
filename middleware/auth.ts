@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 const BASE_DOMAIN = process.env.BASE_DOMAIN || "urstruly.xyz";
+const AUTH_HOST = `auth.${BASE_DOMAIN}`;
 const IS_PROD = process.env.NODE_ENV === "production";
 
 const SESSION_COOKIE = IS_PROD
@@ -12,13 +13,17 @@ const CALLBACK_COOKIE = IS_PROD
   : "next-auth.callback-url";
 const TENANT_RETURN_COOKIE = "tenant-return";
 
-function allowed(url: string) {
+/** Only allow HTTPS tenant URLs on *.BASE_DOMAIN, explicitly excluding the auth host. */
+function allowedTenant(url: string) {
   try {
     const u = new URL(url);
-    return (
-      u.protocol === "https:" &&
-      (u.hostname === BASE_DOMAIN || u.hostname.endsWith("." + BASE_DOMAIN))
-    );
+    const isHttpsOk = IS_PROD
+      ? u.protocol === "https:"
+      : u.protocol === "https:" || u.protocol === "http:";
+    const isTenantHost =
+      u.hostname !== AUTH_HOST &&
+      (u.hostname === BASE_DOMAIN || u.hostname.endsWith("." + BASE_DOMAIN));
+    return isHttpsOk && isTenantHost;
   } catch {
     return false;
   }
@@ -30,15 +35,32 @@ export function authMiddleware(req: NextRequest) {
   // Never touch NextAuth internals
   if (pathname.startsWith("/api/auth/")) return NextResponse.next();
 
-  // If already signed in on auth host, bounce to tenant callback
   const hasSession = Boolean(req.cookies.get(SESSION_COOKIE)?.value);
-  if (hasSession) {
-    const cb = req.cookies.get(CALLBACK_COOKIE)?.value;
-    if (cb && allowed(cb)) return NextResponse.redirect(cb);
+  if (!hasSession) return NextResponse.next();
 
-    const fb = req.cookies.get(TENANT_RETURN_COOKIE)?.value;
-    if (fb && allowed(fb)) return NextResponse.redirect(fb);
+  // Prefer NextAuth callback-url, else our tenant fallback
+  const cb = req.cookies.get(CALLBACK_COOKIE)?.value;
+  const fb = req.cookies.get(TENANT_RETURN_COOKIE)?.value;
+
+  let target: string | null = null;
+  if (cb && allowedTenant(cb)) target = cb;
+  if (!target && fb && allowedTenant(fb)) target = fb;
+
+  if (!target) return NextResponse.next();
+
+  const currentUrl = req.nextUrl.toString();
+  // Guard: do not redirect to the same URL and never to the auth host
+  try {
+    const t = new URL(target);
+    if (t.toString() === currentUrl || t.hostname === AUTH_HOST) {
+      return NextResponse.next();
+    }
+    const res = NextResponse.redirect(t);
+    // Prevent re-bounce loops
+    res.cookies.delete(CALLBACK_COOKIE);
+    res.cookies.delete(TENANT_RETURN_COOKIE);
+    return res;
+  } catch {
+    return NextResponse.next();
   }
-
-  return NextResponse.next();
 }
