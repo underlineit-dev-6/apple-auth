@@ -30,25 +30,35 @@ function allowedTenant(url: string) {
 }
 
 export function authMiddleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+  const { pathname, searchParams } = req.nextUrl;
 
   // Never touch NextAuth internals
   if (pathname.startsWith("/api/auth/")) return NextResponse.next();
 
   const hasSession = Boolean(req.cookies.get(SESSION_COOKIE)?.value);
 
-  // ✅ Safety net after logout: if user is on auth host without a session,
-  // send them back to the tenant if we know it.
+  // If there is NO session on the auth host, redirect out aggressively.
   if (!hasSession) {
-    // Trigger on root or any non-API path that auth might redirect to post-signout
-    if (pathname === "/" || pathname === "" || pathname === "/signed-out") {
-      const fb = req.cookies.get(TENANT_RETURN_COOKIE)?.value;
-      if (fb && allowedTenant(fb)) {
-        const res = NextResponse.redirect(new URL(fb));
-        res.cookies.delete(TENANT_RETURN_COOKIE);
-        return res;
-      }
+    // Highest priority: explicit callbackUrl on the URL itself
+    const urlParamCb = searchParams.get("callbackUrl");
+    // Then NextAuth cookie
+    const cookieCb = req.cookies.get(CALLBACK_COOKIE)?.value;
+    // Then our fallback from tenantMiddleware
+    const fb = req.cookies.get(TENANT_RETURN_COOKIE)?.value;
+
+    const target = [urlParamCb, cookieCb, fb].find(
+      (v) => v && allowedTenant(v!)
+    );
+
+    if (target) {
+      const res = NextResponse.redirect(new URL(target!));
+      // Clean up any breadcrumbs
+      res.cookies.delete(CALLBACK_COOKIE);
+      res.cookies.delete(TENANT_RETURN_COOKIE);
+      return res;
     }
+
+    // Nothing usable — just continue so the auth host renders its page
     return NextResponse.next();
   }
 
